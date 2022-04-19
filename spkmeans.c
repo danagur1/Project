@@ -8,6 +8,19 @@ typedef enum
     false,
     true
 } bool;
+/*
+allocates and initializes dynamic memory for matrix- array with size rows of arrays with size cols
+*/
+static double **create_matrix(int cols, int rows)
+{
+    double **mat = calloc(rows, sizeof(*mat));
+    int row;
+    for (row = 0; row < rows; row++)
+    {
+        mat[row] = calloc(cols, sizeof(*mat[row]));
+    }
+    return mat;
+}
 static int count_lines(FILE *in_file)
 {
     int count = 1;
@@ -19,6 +32,7 @@ static int count_lines(FILE *in_file)
             count++;
         }
     }
+    rewind(in_file);
     return count;
 }
 static int find_dim(FILE *in_file)
@@ -32,55 +46,42 @@ static int find_dim(FILE *in_file)
             count++;
         }
     }
+    rewind(in_file);
     return count;
 }
-static double **read_input_file(FILE *in_file, int lines, int dim)
+static double **read_input_file(char const *input_file_path, int *lines, int *dim)
 {
-    double **vectors;
-    int i, j;
-    vectors = malloc(lines * sizeof(*vectors));
-    for (i = 0; i < lines; i++)
+    FILE *in_file = fopen(input_file_path, "r");
+    double **vectors = create_matrix(*lines = count_lines(in_file), *dim = find_dim(in_file));
+    int i;
+    for (i = 0; i < *lines; i++)
     {
-        *(vectors + i) = malloc(dim * sizeof(**(vectors + i)));
-    }
-    fseek(in_file, 0, SEEK_SET);
-    for (i = 0; i < lines; i++)
-    {
-        for (j = 0; j < dim; j++)
+        int j;
+        for (j = 0; j < *dim; j++)
         {
-            fscanf(in_file, j != dim - 1 ? "%lf," : "%lf\n", *(vectors + i) + j);
+            fscanf(in_file, "%lf,", &vectors[i][j]);
         }
+        fscanf(in_file, "%lf\n", &vectors[i][j]);
     }
+    fclose(in_file);
     return vectors;
 }
 static double **initialize_centroids(int k, int dim)
 {
     FILE *in_file = fopen("first_centroids.txt", "r");
-    double **centroids;
-    int i, j;
-    centroids = malloc(k * sizeof(*centroids));
-    for (i = 0; i < k; i++)
-    {
-        *(centroids + i) = malloc(dim * sizeof(**(centroids + i)));
-    }
-    for (i = 0; i < k; i++)
-    {
-        for (j = 0; j < dim; j++)
-        {
-            fscanf(in_file, j != dim - 1 ? "%lf," : "%lf\n", *(centroids + i) + j);
-        }
-    }
-    return centroids;
-}
-static double **initialize_clusters(int k, int dim)
-{
-    double **clusters_sum = malloc(sizeof(*clusters_sum) * k);
+    double **centroids = create_matrix(k, dim);
     int i;
     for (i = 0; i < k; i++)
     {
-        *(clusters_sum + i) = calloc(dim, sizeof(double));
+        int j;
+        for (j = 0; j < dim; j++)
+        {
+            fscanf(in_file, "%lf,", &centroids[i][j]);
+        }
+        fscanf(in_file, "%lf\n", &centroids[i][j]);
     }
-    return clusters_sum;
+    fclose(in_file);
+    return centroids;
 }
 static double euclidean_norm(double *vector, int dim)
 {
@@ -88,45 +89,45 @@ static double euclidean_norm(double *vector, int dim)
     int i;
     for (i = 0; i < dim; i++)
     {
-        square_sum += pow(*(vector + i), 2);
+        square_sum += vector[i] * vector[i];
     }
     return sqrt(square_sum);
 }
-static void vectors_operators(double *new_vector, double *a, double *b, char op, int dim)
+static double *add_vectors(double *new_vector, double *a, double *b, int dim)
 {
     int i;
     for (i = 0; i < dim; i++)
     {
-        switch (op)
-        {
-        case '+':
-            *(new_vector + i) = *(a + i) + *(b + i);
-            break;
-        case '-':
-            *(new_vector + i) = *(a + i) - *(b + i);
-            break;
-        default:
-            break;
-        }
+        new_vector[i] = a[i] + b[i];
     }
-    return;
+    return new_vector;
+}
+static double *sub_vectors(double *new_vector, double *a, double *b, int dim)
+{
+    int i;
+    for (i = 0; i < dim; i++)
+    {
+        new_vector[i] = a[i] - b[i];
+    }
+    return new_vector;
 }
 static double dist(double *a, double *b, int dim)
 {
-    double *minus = malloc(dim * sizeof(*minus));
+    double *minus = calloc(dim, sizeof(*minus));
     double result;
-    vectors_operators(minus, a, b, '-', dim);
+    sub_vectors(minus, a, b, dim);
     result = euclidean_norm(minus, dim);
     free(minus);
     return result;
 }
-static int find_best_cluster(int k, double **centroids, double *vector, int dim)
+static int find_best_cluster(double **centroids, double *vector, int k, int dim)
 {
-    int i, min_cluster = 0;
-    double min_dist = dist(*centroids, vector, dim);
+    double min_dist = dist(centroids[0], vector, dim);
+    int min_cluster = 0;
+    int i;
     for (i = 1; i < k; i++)
     {
-        double curr_dist = dist(vector, *(centroids + i), dim);
+        double curr_dist = dist(vector, centroids[i], dim);
         if (curr_dist < min_dist)
         {
             min_cluster = i;
@@ -137,10 +138,12 @@ static int find_best_cluster(int k, double **centroids, double *vector, int dim)
 }
 static double *divide(double *a, double d, int dim)
 {
-    double *result = malloc(sizeof(double) * dim);
+    double *result = calloc(dim, sizeof(*result));
     int i;
     for (i = 0; i < dim; i++)
-        *(result + i) = *(a + i) / d;
+    {
+        result[i] = a[i] / d;
+    }
     return result;
 }
 static void write_output(const char *output_file_path, double **centroids, int k, int dim)
@@ -152,144 +155,142 @@ static void write_output(const char *output_file_path, double **centroids, int k
         int j;
         for (j = 0; j < dim; j++)
         {
-            double value = *(*(centroids + i) + j);
-            fprintf(out_file, j != dim - 1 ? "%.4f," : "%.4f\n", value);
+            fprintf(out_file, "%.4f,", centroids[i][j]);
         }
+        fprintf(out_file, "%.4f\n", centroids[i][j]);
     }
     fclose(out_file);
 }
-static void free_mem(double **a, double **b, double **c, double *d, int k, int lines)
+static void matrix_reset(double **matrix, int k, int dim)
 {
     int i;
-    for (i = 0; i < lines; i++)
-    {
-        if (i < k)
-        {
-            free(*(b + i));
-            free(*(c + i));
-        }
-        free(*(a + i));
-    }
-    free(a);
-    free(b);
-    free(c);
-    free(d);
-}
-static void clusters_reset(double **clusters_sum, double *clusters_lens, int k, int dim)
-{
-    int i, j;
     for (i = 0; i < k; i++)
     {
-        *(clusters_lens + i) = 0;
-        for (j = 0; j < dim; j++)
-        {
-            *(*(clusters_sum + i) + j) = 0;
-        }
+        memset(matrix[i], 0, dim * sizeof(*matrix[i]));
     }
-}
-
-/* 
-allocates and initializes dynamic memory for matrix- array with size rows of arrays with size cols
-*/
-double **create_matrix(int cols, int rows) {
-   double **mat = calloc(rows, sizeof(double*));
-   int row;
-   for (row=0; row<rows; row++) {
-      mat[row] = calloc(cols, sizeof(double));
-   }
-   return mat;
 }
 
 /*
 free the allocated memory of mat (mat is array with size rows of arrays)
 */
-void free_matrix(double **mat, double rows) {
-   int row;
-   for (row=0; row<rows; row++) {
-      free(mat[row]);
-   }
-   free(mat);
+static void free_matrix(double **matrix, double rows)
+{
+    int row;
+    for (row = 0; row < rows; row++)
+    {
+        free(matrix[row]);
+    }
+    free(matrix);
 }
 
 /*
-2: Compute the normalized graph Laplacian Lnorm with the weights param (n columns and n rows)
+1: compute the weighted adjacency matrix Wadj with the graph param (n columns and n rows)
 */
-static double **create_Lnorm(double **weights, int n) {
-   double **Lnorm = create_matrix(n, n); //this will be the final result
-   double *D2_diagonal = calloc(n, sizeof(double)); //D2_diagonal[i] = D^(-1/2)[i][i]
-   //calculate D2_diagonal:
-   int row; int col;
-   for (row=0; row<n; row++) {
-      for (col=0; col<n; col++) {
-         D2_diagonal[row] += weights[row][col];
-      }
-      D2_diagonal[row] = 1/(sqrt(D2_diagonal[row]));
-   }
-   //clculate Lnorm:
-   for (row=0; row<n; row++) {
-      for (col=0; col<n; col++) {
-         Lnorm[row][col] = weights[row][col]*D2_diagonal[row]*D2_diagonal[col];
-         if (row==col){
-            Lnorm[row][col] = 1-Lnorm[row][col];
-         }
-      }
-   }
-   free(D2_diagonal);
-   return Lnorm;
+static double **create_Wadj(double **matrix, int n)
+{
+    double **Wadj = create_matrix(n, n);
+    int i;
+    for (i = 0; i < n; i++)
+    {
+        int j;
+        for (j = 0; j < i; j++)
+        {
+            Wadj[i][j] = exp(dist(matrix[i], matrix[j], n) / -2);
+        }
+    }
+    return Wadj;
+}
+
+/*
+2: Compute the The Diagonal Degree Matrix Lnorm with the weights param (n columns and n rows)
+*/
+static double *create_D(double **weights, int n)
+{
+    double *D_diagonal = calloc(n, sizeof(*D_diagonal));
+    /* calculate D_diagonal: */
+    int row;
+    for (row = 0; row < n; row++)
+    {
+        int col;
+        for (col = 0; col < n; col++)
+        {
+            D_diagonal[row] += weights[row][col];
+        }
+    }
+    return D_diagonal;
+}
+
+/*
+3: Compute the normalized graph Laplacian Lnorm with the weights param (n columns and n rows)
+*/
+static double **create_Lnorm(double **weights, double *D_diagonal, int n)
+{
+    double **Lnorm = create_matrix(n, n); /* this will be the final result */
+    int row;
+    /* clculate Lnorm: */
+    for (row = 0; row < n; row++)
+    {
+        int col;
+        for (col = 0; col < n; col++)
+        {
+            Lnorm[row][col] = weights[row][col] / sqrt(D_diagonal[row]) / sqrt(D_diagonal[col]);
+        }
+        Lnorm[row][row] = 1 - Lnorm[row][row];
+    }
+    return Lnorm;
 }
 
 /*
 5: Form the matrix T ∈ Rn×k
 from U by renormalizing each of U’s rows to have unit length
 */
-static double **create_T(double **U, int rows, int cols) {
-   int row;
-   double **T = create_matrix(rows, cols);
-   for (row=0; row<rows; row++) {
-      T[row] = divide(U[row], euclidean_norm(U[row], cols), cols);
-   }
+static double **create_T(double **U, int rows, int cols)
+{
+    int row;
+    double **T = create_matrix(rows, cols);
+    for (row = 0; row < rows; row++)
+    {
+        T[row] = divide(U[row], euclidean_norm(U[row], cols), cols);
+    }
+    return T;
 }
 
-int kmeans(int k, int max_iter, double epsilon, const char *input_file_path, const char *output_file_path)
+void kmeans(int k, int max_iter, double epsilon, const char *input_file_path, const char *output_file_path)
 {
-    FILE *in_file = fopen(input_file_path, "r");
-    int dim = find_dim(in_file);
-    int lines = count_lines(in_file);
-    double **input_vectors = read_input_file(in_file, lines, dim);
+    int dim;
+    int lines;
+    double **input_vectors = read_input_file(input_file_path, &lines, &dim);
     double **centroids = initialize_centroids(k, dim);
-    double **clusters_sum = initialize_clusters(k, dim);
+    double **clusters_sum = create_matrix(k, dim);
     double *clusters_lens = calloc(k, sizeof(double));
-    bool convergence = false;
-    double *vector, *new_centroid;
-    int best_cluster, vector_idx, centroid_idx, i = 0;
-    while ((i != max_iter) && (!convergence))
+    int i;
+    for (i = 0; i < max_iter; i++)
     {
-        i++;
-        clusters_reset(clusters_sum, clusters_lens, k, dim);
+        bool convergence = true;
+        int vector_idx;
+        int centroid_idx;
         for (vector_idx = 0; vector_idx < lines; vector_idx++)
         {
-            vector = *(input_vectors + vector_idx);
-            best_cluster = find_best_cluster(k, centroids, vector, dim);
-            vectors_operators(*(clusters_sum + best_cluster), clusters_sum[best_cluster], vector, '+', dim);
-            (*(clusters_lens + best_cluster))++;
+            int best_cluster = find_best_cluster(centroids, input_vectors[vector_idx], k, dim);
+            add_vectors(clusters_sum[best_cluster], clusters_sum[best_cluster], input_vectors[vector_idx], dim);
+            (clusters_lens[best_cluster])++;
         }
-        convergence = true;
         for (centroid_idx = 0; centroid_idx < k; centroid_idx++)
         {
-            new_centroid = divide(*(clusters_sum + centroid_idx), *(clusters_lens + centroid_idx), dim);
-            if (fabs(euclidean_norm(*(centroids + centroid_idx), dim) - euclidean_norm(new_centroid, dim)) > epsilon)
+            double *new_centroid = divide(clusters_sum[centroid_idx], clusters_lens[centroid_idx], dim);
+            if (fabs(euclidean_norm(centroids[centroid_idx], dim) - euclidean_norm(new_centroid, dim)) > epsilon)
             {
                 convergence = false;
             }
-            free(*(centroids + centroid_idx));
-            *(centroids + centroid_idx) = new_centroid;
+            free(centroids[centroid_idx]);
+            centroids[centroid_idx] = new_centroid;
         }
+        memset(clusters_lens, 0, k);
+        matrix_reset(clusters_sum, k, dim);
     }
     write_output(output_file_path, centroids, k, dim);
-    free_mem(input_vectors, centroids, clusters_sum, clusters_lens, k, lines);
-    return 0;
-}
-
-int main() {
-    return 5;
+    free_matrix(input_vectors, lines);
+    free_matrix(centroids, k);
+    free_matrix(clusters_sum, k);
+    free(clusters_lens);
 }
