@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 #include <math.h>
 #define DEFAULTMAXITER 200
 #define FIRST_CENTROIDS "first_centroids.txt"
