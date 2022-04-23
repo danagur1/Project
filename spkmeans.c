@@ -4,6 +4,8 @@
 #include <string.h>
 #include <math.h>
 #define DEFAULTMAXITER 200
+#define FIRST_CENTROIDS "first_centroids.txt"
+
 typedef enum
 {
     false,
@@ -98,27 +100,22 @@ static int find_dim(FILE *in_file)
 }
 
 /*
-input_file_path- the input file for the K-means algorithem
-vectors- pointer to the vectors variable that represents the number of vector in the input
-dim- pointer to the dim variable that represents the dim of every vector in the input
-opens the input file and return Two-dimensional array of the input
-sets vectors and dim according to the input
+in_file- path to input file that contain vectors
+lines- the amount of lines in the file
+dim- the dim of every vector in the file
+opens the input file and return Two-dimensional array of the input vectors
 */
-static double **read_input_file(char const *input_file_path, int *vectors, int *dim)
-{
-    FILE *in_file = fopen(input_file_path, "r"); //opens the input file
-    if (in_file==NULL){
+static double **read_vectors_file(FILE *in_file, int lines, int dim){
+    if (in_file==NULL){ 
         invalid_input();
     }
-    *vectors = count_lines(in_file); //the number of lines in in_file
-    *dim = find_dim(in_file); //the dimension of the vectors in in_file
-    double **input_matrix = create_matrix(*vectors, *dim); //create the input matrix
+    double **input_matrix = create_matrix(lines, dim); //create the input matrix
     int scan_res; //the returned value of fscanf function
     int vector;
-    for (vector = 0; vector < *vectors; vector++) //for every input vector
+    for (vector = 0; vector < lines; vector++) //for every input vector
     {
         int num;
-        for (num = 0; num < *dim; num++) //for every number in the input vector
+        for (num = 0; num < dim; num++) //for every number in the input vector
         {
              //reads number from the input file and saves it in input_matrix
             scan_res = fscanf(in_file, "%lf,", &input_matrix[vector][num]);
@@ -136,24 +133,6 @@ static double **read_input_file(char const *input_file_path, int *vectors, int *
     return input_matrix;
 }
 
-
-static double **initialize_centroids(int k, int dim)
-{
-    FILE *in_file = fopen("first_centroids.txt", "r");
-    double **centroids = create_matrix(k, dim);
-    int i;
-    for (i = 0; i < k; i++)
-    {
-        int j;
-        for (j = 0; j < dim; j++)
-        {
-            fscanf(in_file, "%lf,", &centroids[i][j]);
-        }
-        fscanf(in_file, "%lf\n", &centroids[i][j]);
-    }
-    fclose(in_file);
-    return centroids;
-}
 static double euclidean_norm(double *vector, int dim)
 {
     double square_sum = 0;
@@ -314,12 +293,23 @@ static double **create_T(double **U, int rows, int cols)
     return T;
 }
 
+double **read_input(int *c_vectors, int *dim, const char *input_file_path) {
+    FILE *in_file = fopen(input_file_path, "r"); //opens the input file
+    *c_vectors = count_lines(in_file); 
+    *dim = find_dim(in_file);
+    double **input_vectors = read_vectors_file(in_file, *c_vectors, *dim);
+}
+
+
 void kmeans(int k, int max_iter, double epsilon, const char *input_file_path, const char *output_file_path)
 {
-    int dim;
-    int vectors;
-    double **input_vectors = read_input_file(input_file_path, &vectors, &dim);
-    double **centroids = initialize_centroids(k, dim);
+    int c_vectors; //the amount of input vectors
+    int dim; //the dimension of the vectors in in_file
+    double **input_vectors = read_input(&c_vectors, &dim, input_file_path);
+    //initializes centroids by reading the file that the python program created:
+    FILE *centroids_file = fopen(FIRST_CENTROIDS, "r"); //opens the input file
+    double **centroids = read_vectors_file(centroids_file, k, dim);
+
     double **clusters_sum = create_matrix(k, dim);
     double *clusters_lens = calloc(k, sizeof(double));
     int i;
@@ -328,7 +318,7 @@ void kmeans(int k, int max_iter, double epsilon, const char *input_file_path, co
         bool convergence = true;
         int vector_idx;
         int centroid_idx;
-        for (vector_idx = 0; vector_idx < vectors; vector_idx++)
+        for (vector_idx = 0; vector_idx < c_vectors; vector_idx++)
         {
             int best_cluster = find_best_cluster(centroids, input_vectors[vector_idx], k, dim);
             add_vectors(clusters_sum[best_cluster], clusters_sum[best_cluster], input_vectors[vector_idx], dim);
@@ -348,7 +338,7 @@ void kmeans(int k, int max_iter, double epsilon, const char *input_file_path, co
         matrix_reset(clusters_sum, k, dim);
     }
     write_output(output_file_path, centroids, k, dim);
-    free_matrix(input_vectors, vectors);
+    free_matrix(input_vectors, c_vectors);
     free_matrix(centroids, k);
     free_matrix(clusters_sum, k);
     free(clusters_lens);
