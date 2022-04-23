@@ -19,7 +19,7 @@ handle invalid input
 static void invalid_input()
 {
     printf("Invalid Input");
-    exit(EXIT_FAILURE); /* terminate */
+    exit(1); /* terminate */
 }
 
 /*
@@ -28,7 +28,7 @@ handle other errors (not invalid input)
 static void error()
 {
     printf("An Error Has Occurred");
-    exit(EXIT_FAILURE); /* terminate */
+    exit(1); /* terminate */
 }
 /*
 allocates and initializes dynamic memory for matrix- array with size rows of arrays with size cols
@@ -147,15 +147,14 @@ calculates and returns euclidean norm of vector with dimention dim
 */
 static double euclidean_norm(double *vector, int dim)
 {
-    double square_sum = 0; //the sum of the square of every num in the vector
-    int i; //index for every number in the vector
+    double square_sum = 0; // the sum of the square of every num in the vector
+    int i;                 // index for every number in the vector
     for (i = 0; i < dim; i++)
     {
-        square_sum += vector[i] * vector[i]; //addes the square of vector[i] to the sum
+        square_sum += vector[i] * vector[i]; // addes the square of vector[i] to the sum
     }
-    return sqrt(square_sum); //calculates square root of the sum
+    return sqrt(square_sum); // calculates square root of the sum
 }
-
 
 static double *add_vectors(double *new_vector, double *a, double *b, int dim)
 {
