@@ -355,7 +355,7 @@ void kmeans(int k, int max_iter, double epsilon, const char *input_file_path, co
     free(clusters_lens);
 }
 
-int main()
+int main(void)
 {
     return 0;
 }
