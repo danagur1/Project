@@ -3,9 +3,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#define MAX_ITER 200
+#define MAX_ITER_JACOBI 100
+#define MAX_ITER_KMEANS 300
 #define EPSILON 1e-6
 #define FIRST_CENTROIDS "first_centroids.txt"
+#define RESULT_FILE "result.txt"
 
 typedef enum
 {
@@ -213,6 +215,10 @@ static int find_best_cluster(double **centroids, double *vector, int k, int dim)
     return min_cluster;
 }
 
+/*
+dim- the dimension of vec
+calculates and return vec/d
+*/
 static double *divide(double *a, double d, int dim)
 {
     double *result = calloc(dim, sizeof(*result));
@@ -224,28 +230,34 @@ static double *divide(double *a, double d, int dim)
     return result;
 }
 
-static void write_output(const char *output_file_path, double **centroids, int k, int dim)
+/*
+write output to output_file_path (for the python program)
+*/
+static void write_output(double **result_marix, int rows, int cols)
 {
-    FILE *out_file = fopen(output_file_path, "w");
-    int i;
-    for (i = 0; i < k; i++)
+    FILE *out_file = fopen(RESULT_FILE, "w"); //open new file
+    int row;
+    for (row = 0; row < rows; row++)
     {
-        int j;
-        for (j = 0; j < dim; j++)
+        int col;
+        for (col = 0; col < cols; col++)
         {
-            fprintf(out_file, "%.4f,", centroids[i][j]);
+            fprintf(out_file, "%.4f,", result_marix[row][col]); //number in matrix + ,
         }
-        fprintf(out_file, "%.4f\n", centroids[i][j]);
+        fprintf(out_file, "%.4f\n", result_marix[row][col]); //last number in line + end of line
     }
     fclose(out_file);
 }
 
-static void matrix_reset(double **matrix, int k, int dim)
+/*
+reset- initialize matrix to 0
+*/
+static void matrix_reset(double **matrix, int rows, int cols)
 {
-    int i;
-    for (i = 0; i < k; i++)
+    int row;
+    for (row = 0; row < rows; row++)
     {
-        memset(matrix[i], 0, dim * sizeof(*matrix[i]));
+        memset(matrix[row], 0, cols * sizeof(double));
     }
 }
 
@@ -391,7 +403,7 @@ static double **jacobi(double **Lnorm, int n) {
     double thetha, t, c, s;
     int count_iter =0;
     int mat_idx;
-    while ((count_iter>1) && (count_iter<MAX_ITER) && (off_diff(A, new_A, n)>EPSILON)) {
+    while ((count_iter>1) && (count_iter<MAX_ITER_JACOBI) && (off_diff(A, new_A, n)>EPSILON)) {
         free(A);
         A = new_A; 
         P = create_matrix(n, n); 
@@ -420,7 +432,9 @@ static double **jacobi(double **Lnorm, int n) {
     free(temp_mult);
     return V;
 }
-
+/*
+read first input from input_file_path, sets c_vectors&dim
+*/
 double **read_input(int *c_vectors, int *dim, const char *input_file_path) {
     FILE *in_file = fopen(input_file_path, "r"); /*opens the input file*/
     if (in_file==NULL){ 
@@ -444,10 +458,10 @@ void kmeans(int k, const char *input_file_path, const char *output_file_path)
     if (centroids_file==NULL){ 
         invalid_input();
     }
+    int i;
     centroids = read_vectors_file(centroids_file, k, dim);
     clusters_sum = create_matrix(k, dim);
     clusters_lens = calloc(k, sizeof(double));
-    int i;
     fclose(centroids_file);
     for (i = 0; i < MAX_ITER; i++)
     {
@@ -463,7 +477,7 @@ void kmeans(int k, const char *input_file_path, const char *output_file_path)
         for (centroid_idx = 0; centroid_idx < k; centroid_idx++)
         {
             double *new_centroid = divide(clusters_sum[centroid_idx], clusters_lens[centroid_idx], dim);
-            if (fabs(euclidean_norm(centroids[centroid_idx], dim) - euclidean_norm(new_centroid, dim)) > EPSILON)
+            if (fabs(euclidean_norm(centroids[centroid_idx], dim) - euclidean_norm(new_centroid, dim)) > 0)
             {
                 convergence = false;
             }
