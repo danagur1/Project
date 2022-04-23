@@ -35,12 +35,12 @@ allocates and initializes dynamic memory for matrix- array with size rows of arr
 */
 static double **create_matrix(int cols, int rows)
 {
+    int row;
     double **mat = calloc(rows, sizeof(*mat)); /* allocates the rows of the matrix */
     if (mat == NULL)
     { /* the calloc request failed */
         error();
     }
-    int row;
     for (row = 0; row < rows; row++) /* for every row of the matrix */
     {
         mat[row] = calloc(cols, sizeof(*mat[row])); /* allocates column in the matrix */
@@ -331,14 +331,14 @@ double **read_input(int *c_vectors, int *dim, const char *input_file_path) {
     return read_vectors_file(in_file, *c_vectors, *dim);
 }
 
-void kmeans(int k, int max_iter, double epsilon, const char *input_file_path, const char *output_file_path)
+void kmeans(int k, const char *input_file_path, const char *output_file_path)
 {
     int c_vectors; /*the amount of input vectors*/
     int dim; /*the dimension of the vectors in in_file*/
     double **input_vectors = read_input(&c_vectors, &dim, input_file_path);
     double **centroids; 
-    double **clusters_sum; /**/
-    double *clusters_lens; /**/
+    double **clusters_sum; /*clusters_sum[i] is the sum vector of the vectors in cluster i*/
+    double *clusters_lens; /*clusters_sum[i] is the amount of vectors in cluster i*/
     /*initializes centroids by reading the file that the python program created:*/
     FILE *centroids_file = fopen(FIRST_CENTROIDS, "r"); /*opens the input file*/
     if (centroids_file==NULL){ 
@@ -398,4 +398,5 @@ int main(int argc, const char **argv)
         }
     }
     invalid_input();
+    return 1;
 }
