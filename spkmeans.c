@@ -3,7 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#define DEFAULTMAXITER 200
+#define MAX_ITER 200
+#define EPSILON 1e-6
 #define FIRST_CENTROIDS "first_centroids.txt"
 
 typedef enum
@@ -332,7 +333,7 @@ void kmeans(int k, int max_iter, double epsilon, const char *input_file_path, co
     double *clusters_lens = calloc(k, sizeof(double));
     int i;
     fclose(centroids_file);
-    for (i = 0; i < max_iter; i++)
+    for (i = 0; i < MAX_ITER; i++)
     {
         bool convergence = true;
         int vector_idx;
@@ -346,7 +347,7 @@ void kmeans(int k, int max_iter, double epsilon, const char *input_file_path, co
         for (centroid_idx = 0; centroid_idx < k; centroid_idx++)
         {
             double *new_centroid = divide(clusters_sum[centroid_idx], clusters_lens[centroid_idx], dim);
-            if (fabs(euclidean_norm(centroids[centroid_idx], dim) - euclidean_norm(new_centroid, dim)) > epsilon)
+            if (fabs(euclidean_norm(centroids[centroid_idx], dim) - euclidean_norm(new_centroid, dim)) > EPSILON)
             {
                 convergence = false;
             }
@@ -367,7 +368,18 @@ void kmeans(int k, int max_iter, double epsilon, const char *input_file_path, co
     free(clusters_lens);
 }
 
-int main(void)
+int main(int argc, const char **argv)
 {
-    return 0;
+    if (argc == 3)
+    {
+        int k = atoi(argv[1]);
+        const char *mime = strchr(argv[2], '.');
+        if (k > 0 && mime != NULL && (strcmp(mime, ".txt") == 0 || strcmp(mime, ".csv") == 0))
+        {
+            /* spkmeans algorithm... */
+            kmeans(k, MAX_ITER, EPSILON, argv[2], FIRST_CENTROIDS);
+            return 0;
+        }
+    }
+    invalid_input();
 }
