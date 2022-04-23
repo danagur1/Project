@@ -347,12 +347,12 @@ void kmeans(int k, int max_iter, double epsilon, const char *input_file_path, co
             free(centroids[centroid_idx]);
             centroids[centroid_idx] = new_centroid;
         }
-        memset(clusters_lens, 0, k);
-        matrix_reset(clusters_sum, k, dim);
         if (convergence)
         {
             break;
         }
+        memset(clusters_lens, 0, k);
+        matrix_reset(clusters_sum, k, dim);
     }
     write_output(output_file_path, centroids, k, dim);
     free_matrix(input_vectors, c_vectors);
