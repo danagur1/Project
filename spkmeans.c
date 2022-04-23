@@ -312,6 +312,7 @@ static double **read_input(int *c_vectors, int *dim, const char *input_file_path
     *dim = find_dim(in_file);
     double **input_vectors = read_vectors_file(in_file, *c_vectors, *dim);
     fclose(in_file);
+    return input_vectors;
 }
 
 void kmeans(int k, int max_iter, double epsilon, const char *input_file_path, const char *output_file_path)
