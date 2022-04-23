@@ -142,16 +142,21 @@ static double **read_vectors_file(FILE *in_file, int lines, int dim)
     return input_matrix;
 }
 
+/*
+calculates and returns euclidean norm of vector with dimention dim
+*/
 static double euclidean_norm(double *vector, int dim)
 {
-    double square_sum = 0;
-    int i;
+    double square_sum = 0; //the sum of the square of every num in the vector
+    int i; //index for every number in the vector
     for (i = 0; i < dim; i++)
     {
-        square_sum += vector[i] * vector[i];
+        square_sum += vector[i] * vector[i]; //addes the square of vector[i] to the sum
     }
-    return sqrt(square_sum);
+    return sqrt(square_sum); //calculates square root of the sum
 }
+
+
 static double *add_vectors(double *new_vector, double *a, double *b, int dim)
 {
     int i;
@@ -317,7 +322,6 @@ void kmeans(int k, int max_iter, double epsilon, const char *input_file_path, co
     /* initializes centroids by reading the file that the python program created: */
     FILE *centroids_file = fopen(FIRST_CENTROIDS, "r"); /* opens the input file */
     double **centroids = read_vectors_file(centroids_file, k, dim);
-
     double **clusters_sum = create_matrix(k, dim);
     double *clusters_lens = calloc(k, sizeof(double));
     int i;
