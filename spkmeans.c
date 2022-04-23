@@ -9,64 +9,111 @@ typedef enum
     false,
     true
 } bool;
+
 /*
 allocates and initializes dynamic memory for matrix- array with size rows of arrays with size cols
 */
 static double **create_matrix(int cols, int rows)
 {
-    double **mat = calloc(rows, sizeof(*mat));
+    double **mat = calloc(rows, sizeof(*mat)); //allocates the rows of the matrix
+    if (mat==NULL) { //the calloc request failed
+        printf("An Error Has Occurred");
+        exit(1); //terminate and return 1
+    }
     int row;
-    for (row = 0; row < rows; row++)
+    for (row = 0; row < rows; row++) //for every row of the matrix
     {
-        mat[row] = calloc(cols, sizeof(*mat[row]));
+        mat[row] = calloc(cols, sizeof(*mat[row])); //allocates column in the matrix
+        if (mat[row]==NULL) { //the calloc request failed
+        printf("An Error Has Occurred");
+        exit(1); //terminate and return 1
+        }
     }
     return mat;
 }
+
+/*
+mat- array with size rows of arrays
+free the allocated memory of mat
+*/
+static void free_matrix(double **matrix, double rows)
+{
+    int row;
+    for (row = 0; row < rows; row++) //for every row in the matrix
+    {
+        free(matrix[row]); //free the column in the matrix
+    }
+    free(matrix); //free the rows of the matrix
+}
+
+/*
+in_file- input file for k-means algorithem: file that contains datapoints separated by commas
+returns the number of lines in in_file
+*/
 static int count_lines(FILE *in_file)
 {
-    int count = 1;
-    char c;
-    while ((c = getc(in_file)) != EOF)
+    int counter = 1; //counter of lines in the file sets to 1 (first line)
+    char c; //the current char from the file
+    while ((c = getc(in_file)) != EOF) //get next char until end of file
     {
-        if (c == '\n')
+        if (c == '\n') //the char represents new line
         {
-            count++;
+            counter++; 
         }
     }
-    rewind(in_file);
-    return count;
+    rewind(in_file); //sets the file position to the beginning of the file
+    return counter;
 }
+
+/*
+in_file- input file for k-means algorithem: file that contains datapoints separated by commas
+returns the dimension of the vectors in in_file
+*/
 static int find_dim(FILE *in_file)
 {
-    int count = 1;
-    char c;
-    while ((c = getc(in_file)) != '\n')
+    int counter = 1; //counter of lines in the file sets to 1 (first line)
+    char c; //the current char from the file
+    while ((c = getc(in_file)) != '\n') //get next char until end of first line
     {
-        if (c == ',')
+        if (c == ',') //the char represnt new number in the vector
         {
-            count++;
+            counter++; 
         }
     }
-    rewind(in_file);
-    return count;
+    rewind(in_file);  //sets the file position to the beginning of the file
+    return counter;
 }
-static double **read_input_file(char const *input_file_path, int *lines, int *dim)
+
+/*
+input_file_path- the input file for the K-means algorithem
+vectors- pointer to the vectors variable that represents the number of vector in the input
+dim- pointer to the dim variable that represents the dim of every vector in the input
+opens the input file and return Two-dimensional array of the input
+sets vectors and dim according to the input
+*/
+static double **read_input_file(char const *input_file_path, int *vectors, int *dim)
 {
-    FILE *in_file = fopen(input_file_path, "r");
-    double **vectors = create_matrix(*lines = count_lines(in_file), *dim = find_dim(in_file));
-    int i;
-    for (i = 0; i < *lines; i++)
+    FILE *in_file = fopen(input_file_path, "r"); //opens the input file
+    *vectors = count_lines(in_file); //the number of lines in in_file
+    *dim = find_dim(in_file); //the dimension of the vectors in in_file
+    double **input_matrix = create_matrix(*vectors, *dim); //create the 
+    int vector;
+    for (vector = 0; vector < *vectors; vector++) //for every input vector
     {
-        int j;
-        for (j = 0; j < *dim; j++)
+        int num;
+        for (num = 0; num < *dim; num++) //for every number in the input vector
         {
-            fscanf(in_file, "%lf,", &vectors[i][j]);
+             //reads number from the input file and saves it in input_matrix
+            fscanf(in_file, "%lf,", &input_matrix[vector][num]);
         }
-        fscanf(in_file, "%lf\n", &vectors[i][j]);
+        //reads the last number in the vector from the file
+        fscanf(in_file, "%lf\n", &input_matrix[vector][num]); 
     }
-    fclose(in_file);
-    return vectors;
+    fclose(in_file); // closes the file
+    return input_matrix;
 }
+
+
 static double **initialize_centroids(int k, int dim)
 {
     FILE *in_file = fopen("first_centroids.txt", "r");
@@ -171,18 +218,6 @@ static void matrix_reset(double **matrix, int k, int dim)
     }
 }
 
-/*
-free the allocated memory of mat (mat is array with size rows of arrays)
-*/
-static void free_matrix(double **matrix, double rows)
-{
-    int row;
-    for (row = 0; row < rows; row++)
-    {
-        free(matrix[row]);
-    }
-    free(matrix);
-}
 
 /*
 1: compute the weighted adjacency matrix Wadj with the graph param (n columns and n rows)
@@ -259,8 +294,8 @@ static double **create_T(double **U, int rows, int cols)
 void kmeans(int k, int max_iter, double epsilon, const char *input_file_path, const char *output_file_path)
 {
     int dim;
-    int lines;
-    double **input_vectors = read_input_file(input_file_path, &lines, &dim);
+    int vectors;
+    double **input_vectors = read_input_file(input_file_path, &vectors, &dim);
     double **centroids = initialize_centroids(k, dim);
     double **clusters_sum = create_matrix(k, dim);
     double *clusters_lens = calloc(k, sizeof(double));
@@ -270,7 +305,7 @@ void kmeans(int k, int max_iter, double epsilon, const char *input_file_path, co
         bool convergence = true;
         int vector_idx;
         int centroid_idx;
-        for (vector_idx = 0; vector_idx < lines; vector_idx++)
+        for (vector_idx = 0; vector_idx < vectors; vector_idx++)
         {
             int best_cluster = find_best_cluster(centroids, input_vectors[vector_idx], k, dim);
             add_vectors(clusters_sum[best_cluster], clusters_sum[best_cluster], input_vectors[vector_idx], dim);
@@ -290,8 +325,12 @@ void kmeans(int k, int max_iter, double epsilon, const char *input_file_path, co
         matrix_reset(clusters_sum, k, dim);
     }
     write_output(output_file_path, centroids, k, dim);
-    free_matrix(input_vectors, lines);
+    free_matrix(input_vectors, vectors);
     free_matrix(centroids, k);
     free_matrix(clusters_sum, k);
     free(clusters_lens);
+}
+
+int main() {
+   return 0;
 }
