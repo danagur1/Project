@@ -17,7 +17,7 @@ handle invalid input
 */
 static void invalid_input() {
     printf("Invalid Input!");
-    exit(1); //terminate
+    exit(1); /*terminate*/
 }
 
 /*
@@ -25,22 +25,22 @@ handle other errors (not invalid input)
 */
 static void error() {
     printf("An Error Has Occurred");
-    exit(1); //terminate
+    exit(1); /*terminate*/
 }
 /*
 allocates and initializes dynamic memory for matrix- array with size rows of arrays with size cols
 */
 static double **create_matrix(int cols, int rows)
 {
-    double **mat = calloc(rows, sizeof(*mat)); //allocates the rows of the matrix
-    if (mat==NULL) { //the calloc request failed
+    double **mat = calloc(rows, sizeof(*mat)); /*allocates the rows of the matrix*/
+    int row;
+    if (mat==NULL) { /*the calloc request failed*/
         error();
     }
-    int row;
-    for (row = 0; row < rows; row++) //for every row of the matrix
+    for (row = 0; row < rows; row++) /*for every row of the matrix*/
     {
-        mat[row] = calloc(cols, sizeof(*mat[row])); //allocates column in the matrix
-        if (mat[row]==NULL) { //the calloc request failed
+        mat[row] = calloc(cols, sizeof(*mat[row])); /*allocates column in the matrix*/
+        if (mat[row]==NULL) { /*the calloc request failed*/
         error();
         }
     }
@@ -54,11 +54,11 @@ free the allocated memory of mat
 static void free_matrix(double **matrix, double rows)
 {
     int row;
-    for (row = 0; row < rows; row++) //for every row in the matrix
+    for (row = 0; row < rows; row++) /*for every row in the matrix*/
     {
-        free(matrix[row]); //free the column in the matrix
+        free(matrix[row]); /*free the column in the matrix*/
     }
-    free(matrix); //free the rows of the matrix
+    free(matrix); /*free the rows of the matrix*/
 }
 
 /*
@@ -67,16 +67,16 @@ returns the number of lines in in_file
 */
 static int count_lines(FILE *in_file)
 {
-    int counter = 1; //counter of lines in the file sets to 1 (first line)
-    char c; //the current char from the file
-    while ((c = getc(in_file)) != EOF) //get next char until end of file
+    int counter = 1; /*counter of lines in the file sets to 1 (first line)*/
+    char c; /*the current char from the file*/
+    while ((c = getc(in_file)) != EOF) /*get next char until end of file*/
     {
-        if (c == '\n') //the char represents new line
+        if (c == '\n') /*the char represents new line*/
         {
             counter++; 
         }
     }
-    rewind(in_file); //sets the file position to the beginning of the file
+    rewind(in_file); /*sets the file position to the beginning of the file*/
     return counter;
 }
 
@@ -86,16 +86,16 @@ returns the dimension of the vectors in in_file
 */
 static int find_dim(FILE *in_file)
 {
-    int counter = 1; //counter of lines in the file sets to 1 (first line)
-    char c; //the current char from the file
-    while ((c = getc(in_file)) != '\n') //get next char until end of first line
+    int counter = 1; /*counter of lines in the file sets to 1 (first line)*/
+    char c; /*the current char from the file*/
+    while ((c = getc(in_file)) != '\n') /*get next char until end of first line*/
     {
-        if (c == ',') //the char represnt new number in the vector
+        if (c == ',') /*the char represnt new number in the vector*/
         {
             counter++; 
         }
     }
-    rewind(in_file);  //sets the file position to the beginning of the file
+    rewind(in_file);  /*sets the file position to the beginning of the file*/
     return counter;
 }
 
@@ -106,30 +106,27 @@ dim- the dim of every vector in the file
 opens the input file and return Two-dimensional array of the input vectors
 */
 static double **read_vectors_file(FILE *in_file, int lines, int dim){
-    if (in_file==NULL){ 
-        invalid_input();
-    }
-    double **input_matrix = create_matrix(lines, dim); //create the input matrix
-    int scan_res; //the returned value of fscanf function
+    double **input_matrix = create_matrix(lines, dim); /*create the input matrix*/
+    int scan_res; /*the returned value of fscanf function*/
     int vector;
-    for (vector = 0; vector < lines; vector++) //for every input vector
+    for (vector = 0; vector < lines; vector++) /*for every input vector*/
     {
         int num;
-        for (num = 0; num < dim; num++) //for every number in the input vector
+        for (num = 0; num < dim; num++) /*for every number in the input vector*/
         {
-             //reads number from the input file and saves it in input_matrix
+             /*reads number from the input file and saves it in input_matrix*/
             scan_res = fscanf(in_file, "%lf,", &input_matrix[vector][num]);
             if (scan_res==0){
                 invalid_input();
             }
         }
-        //reads the last number in the vector from the file
+        /*reads the last number in the vector from the file*/
         fscanf(in_file, "%lf\n", &input_matrix[vector][num]); 
         if (scan_res==0){
                 invalid_input();
         }
     }
-    fclose(in_file); // closes the file
+    fclose(in_file); /* closes the file*/
     return input_matrix;
 }
 
@@ -138,16 +135,18 @@ calculates and returns euclidean norm of vector with dimention dim
 */
 static double euclidean_norm(double *vector, int dim)
 {
-    double square_sum = 0; //the sum of the square of every num in the vector
-    int i; //index for every number in the vector
+    double square_sum = 0; /*the sum of the square of every num in the vector*/
+    int i; /*index for every number in the vector*/
     for (i = 0; i < dim; i++)
     {
-        square_sum += vector[i] * vector[i]; //addes the square of vector[i] to the sum
+        square_sum += vector[i] * vector[i]; /*addes the square of vector[i] to the sum*/
     }
-    return sqrt(square_sum); //calculates square root of the sum
+    return sqrt(square_sum); /*calculates square root of the sum*/
 }
 
+/*
 
+*/
 static double *add_vectors(double *new_vector, double *a, double *b, int dim)
 {
     int i;
@@ -157,6 +156,7 @@ static double *add_vectors(double *new_vector, double *a, double *b, int dim)
     }
     return new_vector;
 }
+
 static double *sub_vectors(double *new_vector, double *a, double *b, int dim)
 {
     int i;
@@ -166,6 +166,7 @@ static double *sub_vectors(double *new_vector, double *a, double *b, int dim)
     }
     return new_vector;
 }
+
 static double dist(double *a, double *b, int dim)
 {
     double *minus = calloc(dim, sizeof(*minus));
@@ -299,23 +300,32 @@ static double **create_T(double **U, int rows, int cols)
 }
 
 double **read_input(int *c_vectors, int *dim, const char *input_file_path) {
-    FILE *in_file = fopen(input_file_path, "r"); //opens the input file
+    FILE *in_file = fopen(input_file_path, "r"); /*opens the input file*/
+    if (in_file==NULL){ 
+        invalid_input();
+    }
     *c_vectors = count_lines(in_file); 
     *dim = find_dim(in_file);
-    double **input_vectors = read_vectors_file(in_file, *c_vectors, *dim);
+    return read_vectors_file(in_file, *c_vectors, *dim);
 }
 
 
 void kmeans(int k, int max_iter, double epsilon, const char *input_file_path, const char *output_file_path)
 {
-    int c_vectors; //the amount of input vectors
-    int dim; //the dimension of the vectors in in_file
+    int c_vectors; /*the amount of input vectors*/
+    int dim; /*the dimension of the vectors in in_file*/
     double **input_vectors = read_input(&c_vectors, &dim, input_file_path);
-    //initializes centroids by reading the file that the python program created:
-    FILE *centroids_file = fopen(FIRST_CENTROIDS, "r"); //opens the input file
-    double **centroids = read_vectors_file(centroids_file, k, dim);
-    double **clusters_sum = create_matrix(k, dim);
-    double *clusters_lens = calloc(k, sizeof(double));
+    double **centroids; 
+    double **clusters_sum; /**/
+    double *clusters_lens; /**/
+    /*initializes centroids by reading the file that the python program created:*/
+    FILE *centroids_file = fopen(FIRST_CENTROIDS, "r"); /*opens the input file*/
+    if (centroids_file==NULL){ 
+        invalid_input();
+    }
+    centroids = read_vectors_file(centroids_file, k, dim);
+    clusters_sum = create_matrix(k, dim);
+    clusters_lens = calloc(k, sizeof(double));
     int i;
     for (i = 0; i < max_iter; i++)
     {
