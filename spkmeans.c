@@ -321,6 +321,105 @@ static double **create_T(double **U, int rows, int cols)
     return T;
 }
 
+/*
+n- the amount of rows in the matrix, the amount of cols in the matrix
+calculate theta in Jacobi eigenvalue algorithm
+*/
+static double clac_theta(double **A, int n, int *max_i, int *max_j) {
+    /*find pivot:*/
+    int max_val=0; /*the max absolute value, and the matching indexes*/
+    int curr_val, curr_i, curr_j; /*current value and indexes in the matrix*/
+    for (curr_i=0; curr_i<n; curr_i++) {
+        for (curr_j=0; curr_j<n; curr_j++) {
+            curr_val = fabs(A[curr_i][curr_j]);
+            if (curr_val > max_val) {
+                max_val = curr_val;
+                *max_i = curr_i;
+                *max_j = curr_j;
+            }
+        }
+    }
+    return (A[*max_j][*max_j]-A[*max_i][*max_i])/(2*A[*max_i][*max_j]);
+}
+
+/*
+mat1, mat2, res are mateixes with n rows and n columns
+calculate multiplication of mat1, mat2 and save it in res
+*/
+static void multiply(double **mat1, double **mat2, double **res, int n)
+{
+   int i, j, k;
+   for (i = 0; i < n; i++) {
+      for (j = 0; j < n; j++) {
+         res[i][j] = 0;
+         for (k = 0; k < n; k++)
+            res[i][j] += mat1[i][k] * mat2[k][j];
+        }
+    }
+}
+
+/*
+calculates and returns off(A)^2-off(A')^2 for Jacobi eigenvalue algorithm
+*/
+static double off_diff(double **A, double **new_A, int n) {
+    double off_A = 0;
+    double off_new = 0;
+    int row; int col;
+    for (row=0; row<n; row++) {
+        for (col=0; col<n; col++) {
+            if (row!=col) {
+                off_A+= A[row][col];
+                off_new+= new_A[row][col];
+            }
+        }
+    }
+    return off_A-off_new;
+}
+
+/*
+n- the amount of rows in the matrix, the amount of cols in the matrix
+The Jacobi eigenvalue algorithm is an iterative method for the calculation of the eigenvalues and
+eigenvectors of a real symmetric matrix (a process known as diagonalization).
+*/
+static double **jacobi(double **Lnorm, int n) {
+    double **temp_mult = create_matrix(n, n); /*variable for temporary results*/
+    double **V = create_matrix(n, n); /*the result matrix*/
+    double **A = Lnorm; /*the current matrix*/
+    double **new_A = A; /*A'- the next matrix*/
+    double **P; /*the Jacobi rotation matrix*/
+    int max_i, max_j; /*the i,j indexes from the calculation of theta*/
+    double thetha, t, c, s;
+    int count_iter =0;
+    int mat_idx;
+    while ((count_iter>1) && (count_iter<MAX_ITER) && (off_diff(A, new_A, n)>EPSILON)) {
+        free(A);
+        A = new_A; 
+        P = create_matrix(n, n); 
+        thetha = clac_theta(A, n, &max_i, &max_j);
+        t = (_copysignf(1.0, thetha))/(fabs(thetha)+sqrt(thetha*thetha+1));
+        c = 1/(sqrt(t*t+1));
+        s = t*c;
+        for (mat_idx=0; mat_idx<n; mat_idx++){ /*set diagonal values in P*/
+            P[mat_idx][mat_idx] =1;
+        }
+        /*set values in P:*/
+        P[max_i][max_i] =c; P[max_j][max_j] =c; P[max_i][max_j] =s; P[max_j][max_i] =s;
+        multiply(V, P, temp_mult, n); V=P; /*update V*/
+        /*calculate A':*/
+        new_A = create_matrix(n, n);
+        for (mat_idx=0; mat_idx<n; mat_idx++) {
+            new_A[mat_idx][max_i] = c*A[mat_idx][max_i]-s*A[mat_idx][max_j];
+            new_A[mat_idx][max_j] = c*A[mat_idx][max_j]-s*A[mat_idx][max_i];
+        }
+        new_A[max_i][max_i]= c*c*A[max_i][max_i] + s*s*A[max_j][max_j]-2*s*c*A[max_i][max_j];
+        new_A[max_j][max_j]= s*s*A[max_i][max_i] + c*c*A[max_j][max_j]-2*s*c*A[max_i][max_j];
+        new_A[max_i][max_j] = 0; new_A[max_j][max_i] = 0;
+        free(P);
+    }
+    free(temp_mult);
+    return V;
+}
+
 double **read_input(int *c_vectors, int *dim, const char *input_file_path) {
     FILE *in_file = fopen(input_file_path, "r"); /*opens the input file*/
     if (in_file==NULL){ 
