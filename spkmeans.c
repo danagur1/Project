@@ -311,6 +311,7 @@ static double **read_input(int *c_vectors, int *dim, const char *input_file_path
     *c_vectors = count_lines(in_file);
     *dim = find_dim(in_file);
     double **input_vectors = read_vectors_file(in_file, *c_vectors, *dim);
+    fclose(in_file);
 }
 
 void kmeans(int k, int max_iter, double epsilon, const char *input_file_path, const char *output_file_path)
@@ -324,6 +325,7 @@ void kmeans(int k, int max_iter, double epsilon, const char *input_file_path, co
     double **clusters_sum = create_matrix(k, dim);
     double *clusters_lens = calloc(k, sizeof(double));
     int i;
+    fclose(centroids_file);
     for (i = 0; i < max_iter; i++)
     {
         bool convergence = true;
