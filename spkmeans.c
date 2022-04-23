@@ -349,6 +349,10 @@ void kmeans(int k, int max_iter, double epsilon, const char *input_file_path, co
         }
         memset(clusters_lens, 0, k);
         matrix_reset(clusters_sum, k, dim);
+        if (convergence)
+        {
+            break;
+        }
     }
     write_output(output_file_path, centroids, k, dim);
     free_matrix(input_vectors, c_vectors);
