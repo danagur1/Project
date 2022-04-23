@@ -415,6 +415,7 @@ static double **jacobi(double **Lnorm, int n) {
         new_A[max_j][max_j]= s*s*A[max_i][max_i] + c*c*A[max_j][max_j]-2*s*c*A[max_i][max_j];
         new_A[max_i][max_j] = 0; new_A[max_j][max_i] = 0;
         free(P);
+        count_iter++;
     }
     free(temp_mult);
     return V;
