@@ -11,22 +11,35 @@ typedef enum
 } bool;
 
 /*
+handle invalid input
+*/
+static void invalid_input() {
+    printf("Invalid Input!");
+    exit(1); //terminate
+}
+
+/*
+handle other errors (not invalid input)
+*/
+static void error() {
+    printf("An Error Has Occurred");
+    exit(1); //terminate
+}
+/*
 allocates and initializes dynamic memory for matrix- array with size rows of arrays with size cols
 */
 static double **create_matrix(int cols, int rows)
 {
     double **mat = calloc(rows, sizeof(*mat)); //allocates the rows of the matrix
     if (mat==NULL) { //the calloc request failed
-        printf("An Error Has Occurred");
-        exit(1); //terminate and return 1
+        error();
     }
     int row;
     for (row = 0; row < rows; row++) //for every row of the matrix
     {
         mat[row] = calloc(cols, sizeof(*mat[row])); //allocates column in the matrix
         if (mat[row]==NULL) { //the calloc request failed
-        printf("An Error Has Occurred");
-        exit(1); //terminate and return 1
+        error();
         }
     }
     return mat;
@@ -94,9 +107,13 @@ sets vectors and dim according to the input
 static double **read_input_file(char const *input_file_path, int *vectors, int *dim)
 {
     FILE *in_file = fopen(input_file_path, "r"); //opens the input file
+    if (in_file==NULL){
+        invalid_input();
+    }
     *vectors = count_lines(in_file); //the number of lines in in_file
     *dim = find_dim(in_file); //the dimension of the vectors in in_file
-    double **input_matrix = create_matrix(*vectors, *dim); //create the 
+    double **input_matrix = create_matrix(*vectors, *dim); //create the input matrix
+    int scan_res; //the returned value of fscanf function
     int vector;
     for (vector = 0; vector < *vectors; vector++) //for every input vector
     {
@@ -104,10 +121,16 @@ static double **read_input_file(char const *input_file_path, int *vectors, int *
         for (num = 0; num < *dim; num++) //for every number in the input vector
         {
              //reads number from the input file and saves it in input_matrix
-            fscanf(in_file, "%lf,", &input_matrix[vector][num]);
+            scan_res = fscanf(in_file, "%lf,", &input_matrix[vector][num]);
+            if (scan_res==0){
+                invalid_input();
+            }
         }
         //reads the last number in the vector from the file
         fscanf(in_file, "%lf\n", &input_matrix[vector][num]); 
+        if (scan_res==0){
+                invalid_input();
+        }
     }
     fclose(in_file); // closes the file
     return input_matrix;
