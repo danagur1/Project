@@ -165,6 +165,7 @@ static double *add_vectors(double *new_vector, double *a, double *b, int dim)
     }
     return new_vector;
 }
+
 static double *sub_vectors(double *new_vector, double *a, double *b, int dim)
 {
     int i;
@@ -174,6 +175,7 @@ static double *sub_vectors(double *new_vector, double *a, double *b, int dim)
     }
     return new_vector;
 }
+
 static double dist(double *a, double *b, int dim)
 {
     double *minus = calloc(dim, sizeof(*minus));
@@ -183,6 +185,7 @@ static double dist(double *a, double *b, int dim)
     free(minus);
     return result;
 }
+
 static int find_best_cluster(double **centroids, double *vector, int k, int dim)
 {
     double min_dist = dist(centroids[0], vector, dim);
@@ -199,6 +202,7 @@ static int find_best_cluster(double **centroids, double *vector, int k, int dim)
     }
     return min_cluster;
 }
+
 static double *divide(double *a, double d, int dim)
 {
     double *result = calloc(dim, sizeof(*result));
@@ -209,6 +213,7 @@ static double *divide(double *a, double d, int dim)
     }
     return result;
 }
+
 static void write_output(const char *output_file_path, double **centroids, int k, int dim)
 {
     FILE *out_file = fopen(output_file_path, "w");
@@ -224,6 +229,7 @@ static void write_output(const char *output_file_path, double **centroids, int k
     }
     fclose(out_file);
 }
+
 static void matrix_reset(double **matrix, int k, int dim)
 {
     int i;
