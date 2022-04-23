@@ -189,19 +189,25 @@ static double dist(double *a, double *b, int dim)
 }
 
 /*
+k- the amount of centroids
+dim- the dimension of the vector
+in K-means algorithm- finds and returns the index of the closet cluster (in centroids) to vector
 */
 static int find_best_cluster(double **centroids, double *vector, int k, int dim)
 {
+    /*minimal distance between vector from centroid in centroids:*/
     double min_dist = dist(centroids[0], vector, dim);
+    /*index of the centroid that has min_dist distance from vector*/ 
     int min_cluster = 0;
-    int i;
-    for (i = 1; i < k; i++)
+    int centroid_idx;
+    for (centroid_idx = 1; centroid_idx < k; centroid_idx++)
     {
-        double curr_dist = dist(vector, centroids[i], dim);
-        if (curr_dist < min_dist)
+        /*distance between vector to current centroid (centroids[centroid_idx])*/
+        double curr_dist = dist(vector, centroids[centroid_idx], dim); 
+        if (curr_dist < min_dist) 
         {
-            min_cluster = i;
-            min_dist = curr_dist;
+            min_dist = curr_dist; /*update minimal distance*/
+            min_cluster = centroid_idx; /*update matching centroid index*/
         }
     }
     return min_cluster;
