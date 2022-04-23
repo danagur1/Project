@@ -305,7 +305,7 @@ static double **create_T(double **U, int rows, int cols)
     return T;
 }
 
-double **read_input(int *c_vectors, int *dim, const char *input_file_path)
+static double **read_input(int *c_vectors, int *dim, const char *input_file_path)
 {
     FILE *in_file = fopen(input_file_path, "r"); /* opens the input file */
     *c_vectors = count_lines(in_file);
