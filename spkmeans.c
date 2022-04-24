@@ -235,16 +235,16 @@ write output to output_file_path (for the python program)
 */
 static void write_output(double **result_marix, int rows, int cols)
 {
-    FILE *out_file = fopen(RESULT_FILE, "w"); //open new file
+    FILE *out_file = fopen(RESULT_FILE, "w"); /*open new file*/
     int row;
     for (row = 0; row < rows; row++)
     {
         int col;
         for (col = 0; col < cols; col++)
         {
-            fprintf(out_file, "%.4f,", result_marix[row][col]); //number in matrix + ,
+            fprintf(out_file, "%.4f,", result_marix[row][col]); /*number in matrix + ,*/
         }
-        fprintf(out_file, "%.4f\n", result_marix[row][col]); //last number in line + end of line
+        fprintf(out_file, "%.4f\n", result_marix[row][col]); /*last number in line + end of line*/
     }
     fclose(out_file);
 }
@@ -282,26 +282,26 @@ static double **create_Wadj(double **matrix, int n)
 /*
 2: Compute the The Diagonal Degree Matrix Lnorm with the weights param (n columns and n rows)
 */
-static double *create_D(double **weights, int n)
+static double **create_D(double **weights, int n)
 {
-    double *D_diagonal = calloc(n, sizeof(*D_diagonal));
-    /* calculate D_diagonal: */
+    double **D = create_matrix(n, n);
+    /* calculate D: */
     int row;
     for (row = 0; row < n; row++)
     {
         int col;
         for (col = 0; col < n; col++)
         {
-            D_diagonal[row] += weights[row][col];
+            D[row][row] += weights[row][col];
         }
     }
-    return D_diagonal;
+    return D;
 }
 
 /*
 3: Compute the normalized graph Laplacian Lnorm with the weights param (n columns and n rows)
 */
-static double **create_Lnorm(double **weights, double *D_diagonal, int n)
+static double **create_Lnorm(double **weights, double **D, int n)
 {
     double **Lnorm = create_matrix(n, n); /* this will be the final result */
     int row;
@@ -311,7 +311,7 @@ static double **create_Lnorm(double **weights, double *D_diagonal, int n)
         int col;
         for (col = 0; col < n; col++)
         {
-            Lnorm[row][col] = weights[row][col] / sqrt(D_diagonal[row]) / sqrt(D_diagonal[col]);
+            Lnorm[row][col] = weights[row][col] * sqrt(D[row][row]) * sqrt(D[col][col]);
         }
         Lnorm[row][row] = 1 - Lnorm[row][row];
     }
@@ -322,13 +322,13 @@ static double **create_Lnorm(double **weights, double *D_diagonal, int n)
 5: Form the matrix T ∈ Rn×k
 from U by renormalizing each of U’s rows to have unit length
 */
-static double **create_T(double **U, int rows, int cols)
+static double **create_T(double **U, int n)
 {
     int row;
-    double **T = create_matrix(rows, cols);
-    for (row = 0; row < rows; row++)
+    double **T = create_matrix(n, n);
+    for (row = 0; row < n; row++)
     {
-        T[row] = divide(U[row], euclidean_norm(U[row], cols), cols);
+        T[row] = divide(U[row], euclidean_norm(U[row], n), n);
     }
     return T;
 }
@@ -393,7 +393,7 @@ n- the amount of rows in the matrix, the amount of cols in the matrix
 The Jacobi eigenvalue algorithm is an iterative method for the calculation of the eigenvalues and
 eigenvectors of a real symmetric matrix (a process known as diagonalization).
 */
-static double **jacobi(double **Lnorm, int n) {
+static double **jacobi(double **Lnorm, int n, double ***final_A) {
     double **temp_mult = create_matrix(n, n); /*variable for temporary results*/
     double **V = create_matrix(n, n); /*the result matrix*/
     double **A = Lnorm; /*the current matrix*/
@@ -430,10 +430,12 @@ static double **jacobi(double **Lnorm, int n) {
         count_iter++;
     }
     free(temp_mult);
+    *final_A = new_A;
+    free(new_A); free(A);
     return V;
 }
 /*
-read first input from input_file_path, sets c_vectors&dim
+Kmeans: read first input from input_file_path, sets c_vectors&dim
 */
 double **read_input(int *c_vectors, int *dim, const char *input_file_path) {
     FILE *in_file = fopen(input_file_path, "r"); /*opens the input file*/
@@ -445,70 +447,146 @@ double **read_input(int *c_vectors, int *dim, const char *input_file_path) {
     return read_vectors_file(in_file, *c_vectors, *dim);
 }
 
-void kmeans(int k, const char *input_file_path, const char *output_file_path)
+void kmeans(int k, double **input_vectors)
 {
-    int c_vectors; /*the amount of input vectors*/
-    int dim; /*the dimension of the vectors in in_file*/
-    double **input_vectors = read_input(&c_vectors, &dim, input_file_path);
+    int c_vectors=0; /*the amount of input vectors*/
+    int dim=0; /*the dimension of the vectors in in_file*/
     double **centroids; 
     double **clusters_sum; /*clusters_sum[i] is the sum vector of the vectors in cluster i*/
     double *clusters_lens; /*clusters_sum[i] is the amount of vectors in cluster i*/
     /*initializes centroids by reading the file that the python program created:*/
-    FILE *centroids_file = fopen(FIRST_CENTROIDS, "r"); /*opens the input file*/
+    FILE *centroids_file;
+    int count_iter;
+    centroids_file = fopen(FIRST_CENTROIDS, "r"); /*opens the input file*/
     if (centroids_file==NULL){ 
         invalid_input();
     }
-    int i;
     centroids = read_vectors_file(centroids_file, k, dim);
     clusters_sum = create_matrix(k, dim);
     clusters_lens = calloc(k, sizeof(double));
-    fclose(centroids_file);
-    for (i = 0; i < MAX_ITER; i++)
+    /*until convergence OR iteration number = max iter*/
+    for (count_iter = 0; count_iter < MAX_ITER_KMEANS; count_iter++)
     {
-        bool convergence = true;
+        bool convergence = true; 
         int vector_idx;
         int centroid_idx;
         for (vector_idx = 0; vector_idx < c_vectors; vector_idx++)
         {
+            /*assign input vector x_i to the cluster S_j = increases cluster len and adds to sum:*/
             int best_cluster = find_best_cluster(centroids, input_vectors[vector_idx], k, dim);
             add_vectors(clusters_sum[best_cluster], clusters_sum[best_cluster], input_vectors[vector_idx], dim);
             (clusters_lens[best_cluster])++;
         }
+        /*update the centroids:*/
         for (centroid_idx = 0; centroid_idx < k; centroid_idx++)
         {
             double *new_centroid = divide(clusters_sum[centroid_idx], clusters_lens[centroid_idx], dim);
-            if (fabs(euclidean_norm(centroids[centroid_idx], dim) - euclidean_norm(new_centroid, dim)) > 0)
+            /*convergence <-> Euclidean norm for each one of the centroids doesn’t change*/
+            if (fabs(euclidean_norm(centroids[centroid_idx], dim) - euclidean_norm(new_centroid, dim)) > 0) 
             {
                 convergence = false;
             }
             free(centroids[centroid_idx]);
             centroids[centroid_idx] = new_centroid;
         }
-        if (convergence)
+        if (convergence == true)
         {
             break;
         }
+        /*reset clusters for next iteration:*/
         memset(clusters_lens, 0, k);
         matrix_reset(clusters_sum, k, dim);
     }
-    write_output(output_file_path, centroids, k, dim);
+    write_output(centroids, k, dim);
     free_matrix(input_vectors, c_vectors);
     free_matrix(centroids, k);
     free_matrix(clusters_sum, k);
     free(clusters_lens);
 }
 
+/*
+diagonal_mat- Lnorm diagonal matrix (with eigenvalues on diagonal)
+n- size of diagonal_mat
+determine the number of clusters k
+*/
+int Eigengap_Heuristic(double **diagonal_mat, int n) {
+    double max_dist=0; /*maximal dist between eigenvalue-i, eigenvalue-i+1*/
+    int max_i=0; /*matching index for maximal dist*/
+    int i;
+    double curr_dist;
+    for (i=0; i<floor(n/2); i++) {
+        curr_dist = fabs(diagonal_mat[i][i]-diagonal_mat[i+1][i+1]);
+        if (curr_dist>max_dist) {
+            max_dist = curr_dist;
+            max_i = i;
+        }
+    }
+    return max_i;
+}
+
+/*
+preform the algorithm that required in goal
+*/
+void algorithm(const char *goal, const char *file_path, int k) {
+    int rows, cols;
+    double **X= read_input(&rows, &cols, file_path);
+    double **W= create_Wadj(X, rows);
+    double **D, **L, **final_A, **U, **T;
+    free_matrix(X, rows);
+    if (strcmp(goal, "wadj")==0){
+        write_output(W, rows, rows);
+        free_matrix(W, rows);
+        return;
+    }
+    D = create_D(W, rows);
+    if (strcmp(goal, "ddg")==0){
+        write_output(D, rows, rows);
+        free_matrix(D, rows); free_matrix(W, rows);
+        return;
+    }
+    L = create_Lnorm(W, D, rows);
+    free_matrix(D,rows);
+    if (strcmp(goal, "lnorm")==0){
+        write_output(L, rows, rows);
+        free_matrix(L,rows);
+        return;
+    }
+    final_A = create_matrix(rows, rows);
+    U = jacobi(L, rows, &final_A);
+    free_matrix(L, rows);
+    if (strcmp(goal, "jacobi")==0){
+        write_output(U, rows, rows);
+        free_matrix(U, rows); free_matrix(final_A, rows);
+        return;
+    }
+    T = create_T(U, rows);
+    free_matrix(U, rows);
+    if (strcmp(goal, "T")==0) {
+        write_output(T, rows, rows);
+        free_matrix(T,rows); free_matrix(final_A,rows);
+        return;
+    }
+    free_matrix(T, rows);
+    if (strcmp(goal, "spk")==0) {
+        if (k==0) {
+            k = Eigengap_Heuristic(final_A, rows);
+        }
+        kmeans(k, T);
+    }
+}
+
+
 int main(int argc, const char **argv)
 {
     if (argc == 3)
     {
-        int k = atoi(argv[1]);
+        const char *goal = argv[1]; 
+        /*check file name:*/
         const char *mime = strchr(argv[2], '.');
-        if (k > 0 && mime != NULL && (strcmp(mime, ".txt") == 0 || strcmp(mime, ".csv") == 0))
+        if ((mime != NULL && (strcmp(mime, ".txt") == 0 || strcmp(mime, ".csv") == 0))
+        && (strcmp(goal, "wadj") || strcmp(goal, "ddg") || strcmp(goal, "lnorm") || strcmp(goal, "jacobi"))) 
         {
-            /* spkmeans algorithm... */
-            kmeans(k, MAX_ITER, EPSILON, argv[2], FIRST_CENTROIDS);
-            return 0;
+            algorithm(goal, argv[2], 0);
         }
     }
     invalid_input();
