@@ -1,19 +1,20 @@
-#define PY_SSIZE_T_CLEAN
 #include <Python.h>
-#include "spkmeans.c"
+#include "spkmeans.h"
+#define PY_SSIZE_T_CLEAN
+#define INPUT_FILE "my_input.txt"
+
 /*
  * API functions
  */
-static PyObject *fit(PyObject *self, PyObject *args)
+static PyObject *algorithm(PyObject *self, PyObject *args)
 {
     int k;
-    int max_iter;
-    double epsilon;
-    if (!PyArg_ParseTuple(args, "iid", &k, &max_iter, &epsilon))
+    const char *goal;
+    if (!PyArg_ParseTuple(args, "iid", &k, &goal))
     {
         return NULL;
     }
-    kmeans(k, max_iter, epsilon, "input_vectors.txt", "final_centroids.txt");
+    algorithm(goal, INPUT_FILE, k, write_output)
     Py_RETURN_NONE;
 }
 /*
@@ -24,7 +25,7 @@ static PyObject *fit(PyObject *self, PyObject *args)
 #_name, (PyCFunction)_name, _flag, PyDoc_STR(_docstring) \
     }
 static PyMethodDef _methods[] = {
-    FUNC(METH_VARARGS, fit, "mykmeanssp"),
+    FUNC(METH_VARARGS, algorithm, "mykmeanssp"),
     {NULL, NULL, 0, NULL} /* sentinel */
 };
 static struct PyModuleDef _moduledef = {
