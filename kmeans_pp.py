@@ -4,6 +4,9 @@ import numpy as np
 import mykmeanssp
 import os
 
+RESULT_FILE = "result.txt"
+INPUT_FILE = "my_input.txt"
+
 
 def get_cmd_arguments():
     args = sys.argv
@@ -13,13 +16,10 @@ def get_cmd_arguments():
         return int(args[1]), int(args[2]), float(args[3]), args[4], args[5]
 
 
-def read_input_file(file_name_1, file_name_2):
-    vectors1 = pd.read_csv(file_name_1, header=None)
-    vectors2 = pd.read_csv(file_name_2, header=None)
-    all_vectors = pd.merge(vectors1, vectors2, on=0, how="inner").sort_values(0)
-    no_ids_vectors = all_vectors.loc[:, "1_x":]
-    no_ids_vectors.to_csv("input_vectors.txt", index=False, header=False)
-    return no_ids_vectors.values.tolist()
+def read_input_file(file_name):
+    vectors = pd.read_csv(file_name, header=None)
+    vectors.to_csv(INPUT_FILE, index=False, header=False)
+    return vectors.values.tolist()
 
 
 def choose_centroids(all_vectors, k):
@@ -41,21 +41,23 @@ def choose_centroids(all_vectors, k):
     return centroids_idxs
 
 
-def print_output(centroids_idxs):
-    print(",".join([str(s) for s in centroids_idxs]))
-    with open("final_centroids.txt", "r") as final_centroids:
+def print_output():
+    with open(RESULT_FILE, "r") as final_centroids:
         print("".join([str(line) for line in final_centroids])[:-1])
 
 
 def main():
-    k, max_iter, eps, file_name_1, file_name_2 = get_cmd_arguments()
-    all_vectors = read_input_file(file_name_1, file_name_2)
-    centroids_idxs = choose_centroids(all_vectors, k)
-    mykmeanssp.fit(k, max_iter, eps)
-    print_output(centroids_idxs)
-    os.remove("first_centroids.txt")
-    os.remove("final_centroids.txt")
-    os.remove("input_vectors.txt")
+    k, goal, file_name = get_cmd_arguments()
+    if goal == "spk":
+        mykmeanssp.algorithm(k, "T")
+        all_vectors = read_input_file(RESULT_FILE)
+        centroids_idxs = choose_centroids(all_vectors)
+        print(",".join([str(s) for s in centroids_idxs]))
+        os.remove(RESULT_FILE)
+    mykmeanssp.algorithm(k, goal)
+    print_output()
+    os.remove(INPUT_FILE)
+    os.remove(RESULT_FILE)
 
 
 if __name__ == '__main__':
