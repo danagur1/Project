@@ -5,7 +5,7 @@
 #include <math.h>
 #define MAX_ITER_JACOBI 100
 #define MAX_ITER_KMEANS 300
-#define EPSILON 1e-6
+#define EPSILON 1e-5
 #define FIRST_CENTROIDS "first_centroids.txt"
 #define RESULT_FILE "result.txt"
 
@@ -16,7 +16,7 @@ typedef enum
 } bool;
 
 /*
-handle invalid input
+handle invalid input:
 */
 static void invalid_input()
 {
@@ -25,13 +25,33 @@ static void invalid_input()
 }
 
 /*
-handle other errors (not invalid input)
+handle other errors (not invalid input):
 */
 static void error()
 {
     printf("An Error Has Occurred");
     exit(1); /* terminate */
 }
+
+
+
+/*
+ *
+ *basic functions- math, matrix:
+ *
+*/
+
+
+/*
+sign function, by the project definition
+*/
+double my_sign(double x) {
+    if (x==0) {
+        return 1;
+    }
+    return x/(fabs(x));
+}
+
 /*
 allocates and initializes dynamic memory for matrix- array with size rows of arrays with size cols
 */
@@ -67,6 +87,109 @@ static void free_matrix(double **matrix, double rows)
     }
     free(matrix); /* free the rows of the matrix */
 }
+
+/*
+calculates and returns euclidean norm of vector with dimention dim
+*/
+static double euclidean_norm(double *vector, int dim)
+{
+    double square_sum = 0; /*the sum of the square of every num in the vector*/
+    int i; /*index for every number in the vector*/
+    for (i = 0; i < dim; i++)
+    {
+        square_sum += vector[i] * vector[i]; /*addes the square of vector[i] to the sum*/
+    }
+    return sqrt(square_sum); /*calculates square root of the sum*/
+}
+
+/*
+sum vectors a, b with dimention dim into new_vector
+*/
+static void add_vectors(double *new_vector, double *a, double *b, int dim)
+{
+    int i;
+    for (i = 0; i < dim; i++) 
+    {
+        new_vector[i] = a[i] + b[i]; /*sum every number in the vectors*/
+    }
+}
+
+/*
+subtract vectors a, b with dimention dim into new_vector
+*/
+static void sub_vectors(double **new_vector, double *a, double *b, int dim)
+{
+    int i;
+    for (i = 0; i < dim; i++)
+    {
+        (*new_vector)[i] = a[i] - b[i]; /*substract every number in the vectors*/
+    }
+}
+
+/*
+calculate  the distance between a, b with dimention dim
+*/
+static double dist(double *a, double *b, int dim)
+{
+    double *minus = calloc(dim, sizeof(double)); /*a-b vector*/
+    double result; 
+    sub_vectors(&minus, a, b, dim);
+    result = euclidean_norm(minus, dim);
+    free(minus);
+    return result;
+}
+
+/*
+dim- the dimension of vec
+calculates and return vec/d
+*/
+static double *divide(double *a, double d, int dim)
+{
+    double *result = calloc(dim, sizeof(*result));
+    int i;
+    for (i = 0; i < dim; i++)
+    {
+        result[i] = a[i] / d;
+    }
+    return result;
+}
+
+/*
+mat1, mat2, res are mateixes with n rows and n columns
+calculate multiplication of mat1, mat2 and save it in res
+*/
+static void multiply(double **mat1, double **mat2, double **res, int n)
+{
+   int i, j, k;
+   for (i = 0; i < n; i++) {
+      for (j = 0; j < n; j++) {
+         res[i][j] = 0;
+         for (k = 0; k < n; k++)
+            res[i][j] += mat1[i][k] * mat2[k][j];
+        }
+    }
+}
+
+/*
+reset- initialize matrix to 0
+*/
+static void matrix_reset(double **matrix, int rows, int cols)
+{
+    int row;
+    for (row = 0; row < rows; row++)
+    {
+        memset(matrix[row], 0, cols * sizeof(double));
+    }
+}
+
+
+
+/*
+ *
+ *input, output and files functions:
+ *
+ */
+
 
 /*
 in_file- input file for k-means algorithem: file that contains datapoints separated by commas
@@ -140,55 +263,37 @@ static double **read_vectors_file(FILE *in_file, int lines, int dim){
 }
 
 /*
-calculates and returns euclidean norm of vector with dimention dim
+write output to output_file_path (for the python program)
 */
-static double euclidean_norm(double *vector, int dim)
+static void write_output(double **result_marix, int rows, int cols)
 {
-    double square_sum = 0; /*the sum of the square of every num in the vector*/
-    int i; /*index for every number in the vector*/
-    for (i = 0; i < dim; i++)
+    FILE *out_file = fopen(RESULT_FILE, "w"); /*open new file*/
+    int row;
+    for (row = 0; row < rows; row++)
     {
-        square_sum += vector[i] * vector[i]; /*addes the square of vector[i] to the sum*/
+        int col;
+        for (col = 0; col < cols-1; col++)
+        {
+            fprintf(out_file, "%.4f,", result_marix[row][col]); /*number in matrix + ,*/
+        }
+        fprintf(out_file, "%.4f\n", result_marix[row][col]); /*last number in line + end of line*/
     }
-    return sqrt(square_sum); /*calculates square root of the sum*/
+    fclose(out_file);
 }
 
 /*
-sum vectors a, b with dimention dim into new_vector
+print output
 */
-static void add_vectors(double *new_vector, double *a, double *b, int dim)
-{
-    int i;
-    for (i = 0; i < dim; i++) 
-    {
-        new_vector[i] = a[i] + b[i]; /*sum every number in the vectors*/
-    }
-}
+
+
+
 
 /*
-subtract vectors a, b with dimention dim into new_vector
-*/
-static void sub_vectors(double **new_vector, double *a, double *b, int dim)
-{
-    int i;
-    for (i = 0; i < dim; i++)
-    {
-        (*new_vector)[i] = a[i] - b[i]; /*substract every number in the vectors*/
-    }
-}
+ *
+ *K-means algorithm functions:
+ *
+ */ 
 
-/*
-calculate  the distance between a, b with dimention dim
-*/
-static double dist(double *a, double *b, int dim)
-{
-    double *minus = calloc(dim, sizeof(double)); /*a-b vector*/
-    double result; 
-    sub_vectors(&minus, a, b, dim);
-    result = euclidean_norm(minus, dim);
-    free(minus);
-    return result;
-}
 
 /*
 k- the amount of centroids
@@ -215,225 +320,6 @@ static int find_best_cluster(double **centroids, double *vector, int k, int dim)
     return min_cluster;
 }
 
-/*
-dim- the dimension of vec
-calculates and return vec/d
-*/
-static double *divide(double *a, double d, int dim)
-{
-    double *result = calloc(dim, sizeof(*result));
-    int i;
-    for (i = 0; i < dim; i++)
-    {
-        result[i] = a[i] / d;
-    }
-    return result;
-}
-
-/*
-write output to output_file_path (for the python program)
-*/
-static void write_output(double **result_marix, int rows, int cols)
-{
-    FILE *out_file = fopen(RESULT_FILE, "w"); /*open new file*/
-    int row;
-    for (row = 0; row < rows; row++)
-    {
-        int col;
-        for (col = 0; col < cols; col++)
-        {
-            fprintf(out_file, "%.4f,", result_marix[row][col]); /*number in matrix + ,*/
-        }
-        fprintf(out_file, "%.4f\n", result_marix[row][col]); /*last number in line + end of line*/
-    }
-    fclose(out_file);
-}
-
-/*
-reset- initialize matrix to 0
-*/
-static void matrix_reset(double **matrix, int rows, int cols)
-{
-    int row;
-    for (row = 0; row < rows; row++)
-    {
-        memset(matrix[row], 0, cols * sizeof(double));
-    }
-}
-
-/*
-1: compute the weighted adjacency matrix Wadj with the graph param (n columns and n rows)
-*/
-static double **create_Wadj(double **matrix, int n)
-{
-    double **Wadj = create_matrix(n, n);
-    int i;
-    for (i = 0; i < n; i++)
-    {
-        int j;
-        for (j = 0; j < i; j++)
-        {
-            Wadj[i][j] = exp(dist(matrix[i], matrix[j], n) / -2);
-        }
-    }
-    return Wadj;
-}
-
-/*
-2: Compute the The Diagonal Degree Matrix Lnorm with the weights param (n columns and n rows)
-*/
-static double **create_D(double **weights, int n)
-{
-    double **D = create_matrix(n, n);
-    /* calculate D: */
-    int row;
-    for (row = 0; row < n; row++)
-    {
-        int col;
-        for (col = 0; col < n; col++)
-        {
-            D[row][row] += weights[row][col];
-        }
-    }
-    return D;
-}
-
-/*
-3: Compute the normalized graph Laplacian Lnorm with the weights param (n columns and n rows)
-*/
-static double **create_Lnorm(double **weights, double **D, int n)
-{
-    double **Lnorm = create_matrix(n, n); /* this will be the final result */
-    int row;
-    /* clculate Lnorm: */
-    for (row = 0; row < n; row++)
-    {
-        int col;
-        for (col = 0; col < n; col++)
-        {
-            Lnorm[row][col] = weights[row][col] * sqrt(D[row][row]) * sqrt(D[col][col]);
-        }
-        Lnorm[row][row] = 1 - Lnorm[row][row];
-    }
-    return Lnorm;
-}
-
-/*
-5: Form the matrix T ∈ Rn×k
-from U by renormalizing each of U’s rows to have unit length
-*/
-static double **create_T(double **U, int n)
-{
-    int row;
-    double **T = create_matrix(n, n);
-    for (row = 0; row < n; row++)
-    {
-        T[row] = divide(U[row], euclidean_norm(U[row], n), n);
-    }
-    return T;
-}
-
-/*
-n- the amount of rows in the matrix, the amount of cols in the matrix
-calculate theta in Jacobi eigenvalue algorithm
-*/
-static double clac_theta(double **A, int n, int *max_i, int *max_j) {
-    /*find pivot:*/
-    int max_val=0; /*the max absolute value, and the matching indexes*/
-    int curr_val, curr_i, curr_j; /*current value and indexes in the matrix*/
-    for (curr_i=0; curr_i<n; curr_i++) {
-        for (curr_j=0; curr_j<n; curr_j++) {
-            curr_val = fabs(A[curr_i][curr_j]);
-            if (curr_val > max_val) {
-                max_val = curr_val;
-                *max_i = curr_i;
-                *max_j = curr_j;
-            }
-        }
-    }
-    return (A[*max_j][*max_j]-A[*max_i][*max_i])/(2*A[*max_i][*max_j]);
-}
-
-/*
-mat1, mat2, res are mateixes with n rows and n columns
-calculate multiplication of mat1, mat2 and save it in res
-*/
-static void multiply(double **mat1, double **mat2, double **res, int n)
-{
-   int i, j, k;
-   for (i = 0; i < n; i++) {
-      for (j = 0; j < n; j++) {
-         res[i][j] = 0;
-         for (k = 0; k < n; k++)
-            res[i][j] += mat1[i][k] * mat2[k][j];
-        }
-    }
-}
-
-/*
-calculates and returns off(A)^2-off(A')^2 for Jacobi eigenvalue algorithm
-*/
-static double off_diff(double **A, double **new_A, int n) {
-    double off_A = 0;
-    double off_new = 0;
-    int row; int col;
-    for (row=0; row<n; row++) {
-        for (col=0; col<n; col++) {
-            if (row!=col) {
-                off_A+= A[row][col];
-                off_new+= new_A[row][col];
-            }
-        }
-    }
-    return off_A-off_new;
-}
-
-/*
-n- the amount of rows in the matrix, the amount of cols in the matrix
-The Jacobi eigenvalue algorithm is an iterative method for the calculation of the eigenvalues and
-eigenvectors of a real symmetric matrix (a process known as diagonalization).
-*/
-static double **jacobi(double **Lnorm, int n, double ***final_A) {
-    double **temp_mult = create_matrix(n, n); /*variable for temporary results*/
-    double **V = create_matrix(n, n); /*the result matrix*/
-    double **A = Lnorm; /*the current matrix*/
-    double **new_A = A; /*A'- the next matrix*/
-    double **P; /*the Jacobi rotation matrix*/
-    int max_i, max_j; /*the i,j indexes from the calculation of theta*/
-    double thetha, t, c, s;
-    int count_iter =0;
-    int mat_idx;
-    while ((count_iter>1) && (count_iter<MAX_ITER_JACOBI) && (off_diff(A, new_A, n)>EPSILON)) {
-        free(A);
-        A = new_A; 
-        P = create_matrix(n, n); 
-        thetha = clac_theta(A, n, &max_i, &max_j);
-        t = (_copysignf(1.0, thetha))/(fabs(thetha)+sqrt(thetha*thetha+1));
-        c = 1/(sqrt(t*t+1));
-        s = t*c;
-        for (mat_idx=0; mat_idx<n; mat_idx++){ /*set diagonal values in P*/
-            P[mat_idx][mat_idx] =1;
-        }
-        /*set values in P:*/
-        P[max_i][max_i] =c; P[max_j][max_j] =c; P[max_i][max_j] =s; P[max_j][max_i] =s;
-        multiply(V, P, temp_mult, n); V=P; /*update V*/
-        /*calculate A':*/
-        new_A = create_matrix(n, n);
-        for (mat_idx=0; mat_idx<n; mat_idx++) {
-            new_A[mat_idx][max_i] = c*A[mat_idx][max_i]-s*A[mat_idx][max_j];
-            new_A[mat_idx][max_j] = c*A[mat_idx][max_j]-s*A[mat_idx][max_i];
-        }
-        new_A[max_i][max_i]= c*c*A[max_i][max_i] + s*s*A[max_j][max_j]-2*s*c*A[max_i][max_j];
-        new_A[max_j][max_j]= s*s*A[max_i][max_i] + c*c*A[max_j][max_j]-2*s*c*A[max_i][max_j];
-        new_A[max_i][max_j] = 0; new_A[max_j][max_i] = 0;
-        free(P);
-        count_iter++;
-    }
-    free(temp_mult);
-    *final_A = new_A;
-    free(new_A); free(A);
-    return V;
-}
 /*
 Kmeans: read first input from input_file_path, sets c_vectors&dim
 */
@@ -504,6 +390,91 @@ void kmeans(int k, double **input_vectors)
     free(clusters_lens);
 }
 
+
+
+/*
+ *
+ *Spectral clustering functions:
+ *
+ */ 
+
+
+/*
+1: compute the weighted adjacency matrix Wadj with the graph param (n columns and n rows)
+*/
+static double **create_Wadj(double **matrix, int n, int dim)
+{
+    double val; /*value in the matrix*/
+    double **Wadj = create_matrix(n, n);
+    int i;
+    for (i = 0; i < n; i++)
+    {
+        int j;
+        for (j = 0; j < i; j++)
+        {
+            val = exp(dist(matrix[i], matrix[j], dim) / (-2));
+            Wadj[i][j] = val;
+            Wadj[j][i] = val;
+        }
+    }
+    return Wadj;
+}
+
+/*
+2: Compute the The Diagonal Degree Matrix Lnorm with the weights param (n columns and n rows)
+*/
+static double **create_Dsqrt(double **weights, int n)
+{
+    double **Dsqrt = create_matrix(n, n);
+    /* calculate Dsqrt: */
+    int row;
+    for (row = 0; row < n; row++)
+    {
+        int col;
+        for (col = 0; col < n; col++)
+        {
+            Dsqrt[row][row] += weights[row][col];
+        }
+        Dsqrt[row][row] = 1/sqrt(Dsqrt[row][row]);
+    }
+    return Dsqrt;
+}
+
+/*
+3: Compute the normalized graph Laplacian Lnorm with the weights param (n columns and n rows)
+*/
+static double **create_Lnorm(double **weights, double **Dsqrt, int n)
+{
+    double **Lnorm = create_matrix(n, n); /* this will be the final result */
+    int row;
+    /* clculate Lnorm: */
+    for (row = 0; row < n; row++)
+    {
+        int col;
+        for (col = 0; col < n; col++)
+        {
+            Lnorm[row][col] = -(weights[row][col] * Dsqrt[row][row] * Dsqrt[col][col]);
+        }
+        Lnorm[row][row] = 1 + Lnorm[row][row];
+    }
+    return Lnorm;
+}
+
+/*
+5: Form the matrix T ∈ Rn×k
+from U by renormalizing each of U’s rows to have unit length
+*/
+static double **create_T(double **U, int n)
+{
+    int row;
+    double **T = create_matrix(n, n);
+    for (row = 0; row < n; row++)
+    {
+        T[row] = divide(U[row], euclidean_norm(U[row], n), n);
+    }
+    return T;
+}
+
 /*
 diagonal_mat- Lnorm diagonal matrix (with eigenvalues on diagonal)
 n- size of diagonal_mat
@@ -524,28 +495,137 @@ int Eigengap_Heuristic(double **diagonal_mat, int n) {
     return max_i;
 }
 
+
+
+/*
+ *
+ *Jacobi algorithm functions:
+ *
+ */ 
+
+
+/*
+n- the amount of rows in the matrix, the amount of cols in the matrix
+calculate theta in Jacobi eigenvalue algorithm
+*/
+static double clac_theta(double **A, int n, int *max_i, int *max_j) {
+    /*find pivot:*/
+    double max_val=0; /*the max absolute value, and the matching indexes*/
+    int curr_i, curr_j; /*current indexes in the matrix*/
+    double curr_val; /*current value in the matrix*/
+    for (curr_i=0; curr_i<n; curr_i++) {
+        for (curr_j=0; curr_j<n; curr_j++) {
+            if (curr_i!=curr_j) { /*off-diagonal elements only*/
+                curr_val = fabs(A[curr_i][curr_j]);
+                if (curr_val > max_val) {
+                    max_val = curr_val;
+                    *max_i = curr_i;
+                    *max_j = curr_j;
+                }
+            }
+        }
+    }
+    return (A[*max_j][*max_j]-A[*max_i][*max_i])/(2*A[*max_i][*max_j]);
+}
+
+/*
+calculates and returns off(A)^2-off(A')^2 for Jacobi eigenvalue algorithm
+*/
+static double off_diff(double **A, double **new_A, int n) {
+    double off_A = 0;
+    double off_new = 0;
+    int row; int col;
+    for (row=0; row<n; row++) {
+        for (col=0; col<n; col++) {
+            if (row!=col) {
+                off_A+= A[row][col]*A[row][col];
+                off_new+= new_A[row][col]*new_A[row][col];
+            }
+        }
+    }
+    return off_A-off_new;
+}
+
+/*
+n- the amount of rows in the matrix, the amount of cols in the matrix
+The Jacobi eigenvalue algorithm is an iterative method for the calculation of the eigenvalues and
+eigenvectors of a real symmetric matrix (a process known as diagonalization).
+*/
+static double **jacobi(double **Lnorm, int n, double ***final_A) {
+    double **temp_mult = create_matrix(n, n); /*variable for temporary results*/
+    double **V; /*the result matrix*/
+    double **A; /*the current matrix*/
+    double **new_A = Lnorm; /*A'- the next matrix*/
+    double **P = create_matrix(n, n); /*the Jacobi rotation matrix*/
+    int max_i, max_j; /*the i,j indexes from the calculation of theta*/
+    double theta, t, c, s;
+    int count_iter =0;
+    int mat_idx;
+    while ((count_iter==0) || ((count_iter<MAX_ITER_JACOBI) && (off_diff(A, new_A, n)>EPSILON))) {
+        if (count_iter!=0) {
+            free_matrix(A, n);
+        }
+        A = new_A; 
+        matrix_reset(P, n, n); 
+        theta = clac_theta(A, n, &max_i, &max_j);
+        t = (my_sign(theta))/(fabs(theta)+sqrt(theta*theta+1));
+        c = 1/(sqrt(t*t+1));
+        s = t*c;
+        for (mat_idx=0; mat_idx<n; mat_idx++){ /*set diagonal values in P*/
+            P[mat_idx][mat_idx] =1;
+        }
+        /*set values in P:*/
+        P[max_i][max_i] =c; P[max_j][max_j] =c; P[max_i][max_j] =s; P[max_j][max_i] =-s;
+        /*update V:*/
+        if (count_iter==0) {
+            V=P;
+        }
+        else{
+            multiply(V, P, temp_mult, n);
+            V=temp_mult; 
+        }
+        /*calculate A':*/
+        new_A = create_matrix(n, n);
+        for (mat_idx=0; mat_idx<n; mat_idx++) {
+            new_A[mat_idx][max_i] = c*A[mat_idx][max_i]-s*A[mat_idx][max_j];
+            new_A[mat_idx][max_j] = c*A[mat_idx][max_j]-s*A[mat_idx][max_i];
+        }
+        new_A[max_i][max_i]= c*c*A[max_i][max_i] + s*s*A[max_j][max_j]-2*s*c*A[max_i][max_j];
+        new_A[max_j][max_j]= s*s*A[max_i][max_i] + c*c*A[max_j][max_j]-2*s*c*A[max_i][max_j];
+        new_A[max_i][max_j] = 0; new_A[max_j][max_i] = 0;
+        count_iter++;
+    }
+    *final_A = new_A;
+    free_matrix(P, n);
+    return V;
+}
+
+
+
+
+
 /*
 preform the algorithm that required in goal
 */
 void algorithm(const char *goal, const char *file_path, int k) {
     int rows, cols;
     double **X= read_input(&rows, &cols, file_path);
-    double **W= create_Wadj(X, rows);
-    double **D, **L, **final_A, **U, **T;
+    double **W= create_Wadj(X, rows, cols);
+    double **Dsqrt, **L, **final_A, **U, **T;
     free_matrix(X, rows);
-    if (strcmp(goal, "wadj")==0){
+    if (strcmp(goal, "wam")==0){
         write_output(W, rows, rows);
         free_matrix(W, rows);
         return;
     }
-    D = create_D(W, rows);
+    Dsqrt = create_Dsqrt(W, rows);
     if (strcmp(goal, "ddg")==0){
-        write_output(D, rows, rows);
-        free_matrix(D, rows); free_matrix(W, rows);
+        write_output(Dsqrt, rows, rows);
+        free_matrix(Dsqrt, rows); free_matrix(W, rows);
         return;
     }
-    L = create_Lnorm(W, D, rows);
-    free_matrix(D,rows);
+    L = create_Lnorm(W, Dsqrt, rows);
+    free_matrix(Dsqrt,rows);
     if (strcmp(goal, "lnorm")==0){
         write_output(L, rows, rows);
         free_matrix(L,rows);
@@ -553,10 +633,10 @@ void algorithm(const char *goal, const char *file_path, int k) {
     }
     final_A = create_matrix(rows, rows);
     U = jacobi(L, rows, &final_A);
-    free_matrix(L, rows);
     if (strcmp(goal, "jacobi")==0){
         write_output(U, rows, rows);
-        free_matrix(U, rows); free_matrix(final_A, rows);
+        free_matrix(U, rows);
+        free_matrix(final_A, rows); 
         return;
     }
     T = create_T(U, rows);
