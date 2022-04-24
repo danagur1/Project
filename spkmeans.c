@@ -609,6 +609,18 @@ double **jacobi(double **Lnorm, int n, double ***final_A) {
     return V;
 }
 
+/*
+return array of array with the eigenvalues (diagonal of matrix)
+*/
+double **eigenvalues(double **mat, int n) {
+    double **values = create_matrix(1, n);
+    int i;
+    for (i=0; i<n; i++) {
+        values[0][i]= mat[i][i];
+    }
+    return values;
+}
+
 
 
 
@@ -620,7 +632,7 @@ void algorithm(const char *goal, const char *file_path, int k, void output_forma
     int rows, cols;
     double **X= read_input(&rows, &cols, file_path);
     double **W= create_Wadj(X, rows, cols);
-    double **Dsqrt, **L, **final_A, **U, **T;
+    double **Dsqrt, **L, **final_A, **U, **T, **e_v;
     free_matrix(X, rows);
     if (strcmp(goal, "wam")==0){
         output_format(W, rows, rows);
@@ -643,6 +655,8 @@ void algorithm(const char *goal, const char *file_path, int k, void output_forma
     final_A = create_matrix(rows, rows);
     U = jacobi(L, rows, &final_A);
     if (strcmp(goal, "jacobi")==0){
+        e_v = eigenvalues(final_A, rows);
+        output_format(e_v, 1, rows);
         output_format(U, rows, rows);
         free_matrix(U, rows);
         free_matrix(final_A, rows); 
