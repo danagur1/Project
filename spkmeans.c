@@ -20,7 +20,7 @@ handle invalid input
 */
 static void invalid_input()
 {
-    printf("Invalid Input");
+    printf("Invalid Input!");
     exit(1); /* terminate */
 }
 
@@ -35,7 +35,7 @@ static void error()
 /*
 allocates and initializes dynamic memory for matrix- array with size rows of arrays with size cols
 */
-static double **create_matrix(int cols, int rows)
+static double **create_matrix(int rows, int cols)
 {
     int row;
     double **mat = calloc(rows, sizeof(*mat)); /* allocates the rows of the matrix */
@@ -74,7 +74,7 @@ returns the number of lines in in_file
 */
 static int count_lines(FILE *in_file)
 {
-    int counter = 1; /*counter of lines in the file sets to 1 (first line)*/
+    int counter = 0; /*counter of lines in the file sets to 0*/
     char c; /*the current char from the file*/
     while ((c = getc(in_file)) != EOF) /*get next char until end of file*/
     {
@@ -119,18 +119,18 @@ static double **read_vectors_file(FILE *in_file, int lines, int dim){
     for (vector = 0; vector < lines; vector++) /*for every input vector*/
     {
         int num;
-        for (num = 0; num < dim; num++) /*for every number in the input vector*/
+        for (num = 0; num < dim-1; num++) /*for every number in the input vector*/
         {
              /*reads number from the input file and saves it in input_matrix*/
             scan_res = fscanf(in_file, "%lf,", &input_matrix[vector][num]);
-            if (scan_res == 0)
+            if (scan_res == EOF)
             {
                 invalid_input();
             }
         }
         /* reads the last number in the vector from the file */
-        fscanf(in_file, "%lf\n", &input_matrix[vector][num]);
-        if (scan_res == 0)
+        scan_res = fscanf(in_file, "%lf\n", &input_matrix[vector][num]);
+        if (scan_res == EOF)
         {
             invalid_input();
         }
@@ -168,12 +168,12 @@ static void add_vectors(double *new_vector, double *a, double *b, int dim)
 /*
 subtract vectors a, b with dimention dim into new_vector
 */
-static void sub_vectors(double *new_vector, double *a, double *b, int dim)
+static void sub_vectors(double **new_vector, double *a, double *b, int dim)
 {
     int i;
     for (i = 0; i < dim; i++)
     {
-        new_vector[i] = a[i] - b[i]; /*substract every number in the vectors*/
+        (*new_vector)[i] = a[i] - b[i]; /*substract every number in the vectors*/
     }
 }
 
@@ -182,9 +182,9 @@ calculate  the distance between a, b with dimention dim
 */
 static double dist(double *a, double *b, int dim)
 {
-    double *minus = calloc(dim, sizeof(*minus)); /*a-b vector*/
+    double *minus = calloc(dim, sizeof(double)); /*a-b vector*/
     double result; 
-    sub_vectors(minus, a, b, dim);
+    sub_vectors(&minus, a, b, dim);
     result = euclidean_norm(minus, dim);
     free(minus);
     return result;
@@ -587,6 +587,7 @@ int main(int argc, const char **argv)
         && (strcmp(goal, "wadj") || strcmp(goal, "ddg") || strcmp(goal, "lnorm") || strcmp(goal, "jacobi"))) 
         {
             algorithm(goal, argv[2], 0);
+            return 0;
         }
     }
     invalid_input();
