@@ -182,7 +182,7 @@ n- the amount of rows in the matrix, the amount of cols in the matrix
 The Jacobi eigenvalue algorithm is an iterative method for the calculation of the eigenvalues and
 eigenvectors of a real symmetric matrix (a process known as diagonalization).
 */
-double **jacobi(double **Lnorm, int n, double ***final_A)
+double **jacobi(double **Lnorm, int n, double ***final_A);
 
 
 

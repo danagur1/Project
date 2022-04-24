@@ -6,15 +6,16 @@
 /*
  * API functions
  */
-static PyObject *algorithm(PyObject *self, PyObject *args)
+static PyObject *python_algorithm(PyObject *self, PyObject *args)
 {
     int k;
     const char *goal;
-    if (!PyArg_ParseTuple(args, "is", &k, &goal))
+    const char *input_path;
+    if (!PyArg_ParseTuple(args, "iss", &k, &goal, &input_path))
     {
         return NULL;
     }
-    algorithm(goal, INPUT_FILE, k, write_output)
+    algorithm(goal, input_path, k, write_output);
     Py_RETURN_NONE;
 }
 /*
@@ -25,7 +26,7 @@ static PyObject *algorithm(PyObject *self, PyObject *args)
 #_name, (PyCFunction)_name, _flag, PyDoc_STR(_docstring) \
     }
 static PyMethodDef _methods[] = {
-    FUNC(METH_VARARGS, algorithm, "mykmeanssp"),
+    FUNC(METH_VARARGS, python_algorithm, "mykmeanssp"),
     {NULL, NULL, 0, NULL} /* sentinel */
 };
 static struct PyModuleDef _moduledef = {
