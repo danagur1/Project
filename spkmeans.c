@@ -282,9 +282,18 @@ static void write_output(double **result_marix, int rows, int cols)
 }
 
 /*
+nXm- size of matrix
 print output
 */
-
+static void print_output_matrix(double **matrix, int n, int m) {
+    int i, j;
+    for (i=0; i<n; i++) {
+        for (j=0; j<m-1; j++) {
+            printf("%.4f,", matrix[i][j]);
+        }
+        printf("%.4f\n", matrix[i][j]);
+    }
+}
 
 
 
@@ -607,34 +616,34 @@ static double **jacobi(double **Lnorm, int n, double ***final_A) {
 /*
 preform the algorithm that required in goal
 */
-void algorithm(const char *goal, const char *file_path, int k) {
+void algorithm(const char *goal, const char *file_path, int k, void output_format(double **, int, int)) {
     int rows, cols;
     double **X= read_input(&rows, &cols, file_path);
     double **W= create_Wadj(X, rows, cols);
     double **Dsqrt, **L, **final_A, **U, **T;
     free_matrix(X, rows);
     if (strcmp(goal, "wam")==0){
-        write_output(W, rows, rows);
+        output_format(W, rows, rows);
         free_matrix(W, rows);
         return;
     }
     Dsqrt = create_Dsqrt(W, rows);
     if (strcmp(goal, "ddg")==0){
-        write_output(Dsqrt, rows, rows);
+        output_format(Dsqrt, rows, rows);
         free_matrix(Dsqrt, rows); free_matrix(W, rows);
         return;
     }
     L = create_Lnorm(W, Dsqrt, rows);
     free_matrix(Dsqrt,rows);
     if (strcmp(goal, "lnorm")==0){
-        write_output(L, rows, rows);
+        output_format(L, rows, rows);
         free_matrix(L,rows);
         return;
     }
     final_A = create_matrix(rows, rows);
     U = jacobi(L, rows, &final_A);
     if (strcmp(goal, "jacobi")==0){
-        write_output(U, rows, rows);
+        output_format(U, rows, rows);
         free_matrix(U, rows);
         free_matrix(final_A, rows); 
         return;
@@ -642,7 +651,7 @@ void algorithm(const char *goal, const char *file_path, int k) {
     T = create_T(U, rows);
     free_matrix(U, rows);
     if (strcmp(goal, "T")==0) {
-        write_output(T, rows, rows);
+        output_format(T, rows, rows);
         free_matrix(T,rows); free_matrix(final_A,rows);
         return;
     }
@@ -666,7 +675,7 @@ int main(int argc, const char **argv)
         if ((mime != NULL && (strcmp(mime, ".txt") == 0 || strcmp(mime, ".csv") == 0))
         && (strcmp(goal, "wadj") || strcmp(goal, "ddg") || strcmp(goal, "lnorm") || strcmp(goal, "jacobi"))) 
         {
-            algorithm(goal, argv[2], 0);
+            algorithm(goal, argv[2], 0, print_output_matrix);
             return 0;
         }
     }
