@@ -563,23 +563,24 @@ eigenvectors of a real symmetric matrix (a process known as diagonalization).
 double **jacobi(double **Lnorm, int n, double ***final_A) {
     double **temp_mult = create_matrix(n, n); /*variable for temporary results*/
     double **V; /*the result matrix*/
-    double **A; /*the current matrix*/
+    double **A =Lnorm; /*the current matrix*/
     double **new_A = Lnorm; /*A'- the next matrix*/
     double **P = create_matrix(n, n); /*the Jacobi rotation matrix*/
-    int max_i, max_j; /*the i,j indexes from the calculation of theta*/
+    int i, j, mat_idx; /*the i,j indexes from the calculation of theta*/
     double theta, t, c, s;
     int count_iter =0;
-    int mat_idx;
+    int max_i, max_j;
     while ((count_iter==0) || ((count_iter<MAX_ITER_JACOBI) && (off_diff(A, new_A, n)>EPSILON))) {
-        if (count_iter!=0) {
-            free_matrix(A, n);
-        }
-        A = new_A; 
+        A= new_A;
         matrix_reset(P, n, n); 
         theta = clac_theta(A, n, &max_i, &max_j);
+        printf("theta:%f\n", theta);
         t = (my_sign(theta))/(fabs(theta)+sqrt(theta*theta+1));
+        printf("t:%f\n", t);
         c = 1/(sqrt(t*t+1));
+        printf("c:%f\n", c);
         s = t*c;
+        printf("s:%f\n", s);
         for (mat_idx=0; mat_idx<n; mat_idx++){ /*set diagonal values in P*/
             P[mat_idx][mat_idx] =1;
         }
@@ -595,17 +596,29 @@ double **jacobi(double **Lnorm, int n, double ***final_A) {
         }
         /*calculate A':*/
         new_A = create_matrix(n, n);
+        for (i=0; i<n; i++) {
+            for (j=0; j<n; j++) {
+                new_A[i][j] = A[i][j];
+            }
+        }
         for (mat_idx=0; mat_idx<n; mat_idx++) {
             new_A[mat_idx][max_i] = c*A[mat_idx][max_i]-s*A[mat_idx][max_j];
-            new_A[mat_idx][max_j] = c*A[mat_idx][max_j]-s*A[mat_idx][max_i];
+            new_A[mat_idx][max_j] = c*A[mat_idx][max_j]+s*A[mat_idx][max_i];
         }
         new_A[max_i][max_i]= c*c*A[max_i][max_i] + s*s*A[max_j][max_j]-2*s*c*A[max_i][max_j];
-        new_A[max_j][max_j]= s*s*A[max_i][max_i] + c*c*A[max_j][max_j]-2*s*c*A[max_i][max_j];
+        new_A[max_j][max_j]= s*s*A[max_i][max_i] + c*c*A[max_j][max_j]+2*s*c*A[max_i][max_j];
         new_A[max_i][max_j] = 0; new_A[max_j][max_i] = 0;
         count_iter++;
+        /*
+        printf("new_A:");
+        print_output_matrix(new_A, n ,n);
+        printf("\nV:");
+        print_output_matrix(V, n ,n);
+        printf("\nP:");
+        print_output_matrix(P, n ,n);
+        printf("\n");*/
     }
     *final_A = new_A;
-    free_matrix(P, n);
     return V;
 }
 

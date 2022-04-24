@@ -10,7 +10,7 @@ static PyObject *algorithm(PyObject *self, PyObject *args)
 {
     int k;
     const char *goal;
-    if (!PyArg_ParseTuple(args, "iid", &k, &goal))
+    if (!PyArg_ParseTuple(args, "is", &k, &goal))
     {
         return NULL;
     }
